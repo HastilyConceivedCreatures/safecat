@@ -1,0 +1,8 @@
+[package]
+name = "crypto-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+babyjubjub-ark = { git = "https://github.com/arnaucube/babyjubjub-ark" }
+rand = "0.8.5"
