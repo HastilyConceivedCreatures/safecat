@@ -1,5 +1,5 @@
 # Safecat
-A CLI tool to for crypto functions
+A CLI tool for crypto functions. At the moment supports only the BabyJubJub elliptic curve EdDSA signatures.
 
 ## compile
 `cargo build`
