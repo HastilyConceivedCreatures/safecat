@@ -203,7 +203,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "crypto-cli"
+name = "safecat"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
