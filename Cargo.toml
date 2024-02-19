@@ -3,15 +3,20 @@ name = "safecat"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
 ark-bn254 = "0.4.0"
 ark-ff = "=0.4.0"
 ark-std = "0.4.0"
 babyjubjub-ark = { git = "https://github.com/arnaucube/babyjubjub-ark" }
+ff_ce = { version = "0.11", features = ["derive"] }
 hex = "0.4.3"
 num = "0.4.1"
 num-bigint = "0.4.4"
+poseidon-rs = "0.0.10"
 rand = "0.8.5"
 serde = "1.0.193"
 serde_json = "1.0.109"
 sha2 = "0.10.8"
+
+
