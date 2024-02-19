@@ -14,3 +14,6 @@ A CLI tool for crypto functions. At the moment supports only the BabyJubJub elli
 `safecat sign <message>`: signs a message, e.g., `safecat sign "this is a message"`.
 
 `safecat verify <message> <signature> <public key>`: verifies a signature of a message.
+
+## Limitations
+Poseidon hash is limited to strings of 16 characters.

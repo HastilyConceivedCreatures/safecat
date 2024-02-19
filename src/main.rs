@@ -173,6 +173,10 @@ fn main() {
             // unwrap parameters
             let message_to_sign_string = message_to_sign_options.unwrap();
 
+            if hash_algorithm == "poseidon" && message_to_sign_string.len() > 16 {
+                bad_command("message_too_long");
+            }
+
             // Check if private key file exists
             if !file_exists("priv.key") {
                 println!("No key was generated yet.");
@@ -213,6 +217,10 @@ fn main() {
             let message_to_verify_string = message_to_verify_options.unwrap();
             let public_key_hex_string = public_key_hex_options.unwrap();
             let signature_string = signature_options.unwrap();
+
+            if hash_algorithm == "poseidon" && message_to_verify_string.len() > 16 {
+                bad_command("message_too_long");
+            }
 
             let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
 
@@ -459,6 +467,9 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 pub fn bad_command(command: &str) {
     match command {
         "general" => {
+            let my_str = include_str!("safecat.txt");
+            print!("{my_str}");
+
             println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
             println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
             },
@@ -470,6 +481,8 @@ pub fn bad_command(command: &str) {
             println!("Usage: 'safecat sign [--hash sha256|poseidon=default] [--format hex|detailed=default] <message_to_sign>'"),
         "verify" =>
             println!("Usage: 'safecat verify [--hash sha256|poseidon=default] <message_to_verify> <signature> <public_key>'"),
+        "message_too_long" =>
+            println!("Message too long! The maximum message lengt with Poseidon hash is 16 characters"),
         _ => {
             println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
             println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
