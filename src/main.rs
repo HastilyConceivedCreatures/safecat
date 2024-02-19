@@ -429,7 +429,7 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
         let bytes = message_to_verify_string.as_bytes();
 
         // Convert each byte into an element of the finite field
-        let fr_vector: Vec<FrPoseidon> = bytes.iter().filter_map(|&b| FrPoseidon::from_str(&b.to_string())).collect();
+        let fr_vector: Vec<FrPoseidon> = bytes.iter().map(|&b| FrPoseidon::from_str(&b.to_string()).unwrap()).collect();
 
         // Create a Poseidon hash function
         let poseidon = Poseidon::new();
