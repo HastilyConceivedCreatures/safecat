@@ -3,6 +3,8 @@
 
 A simple CLI tool to generate, sign, and verify digital signatures using EdDSA *Baby Jubjub Elliptic Curve* signatures and a *Poseidon hash function*.
 
+See [the announcement article](http://neimanslab.org/2024-02-19/safecat.html) for more details.
+
 ## compile
 Install Rust, and run `cargo build`.
 
