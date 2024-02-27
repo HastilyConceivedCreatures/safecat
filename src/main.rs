@@ -1,14 +1,13 @@
 mod cast;
+mod io_utils;
 mod consts;
 
 use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Point, PrivateKey};
 use ff_ce::PrimeField;
-use hex;
 use poseidon_rs::{Fr as FrPoseidon, Poseidon};
 use std::env;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::fs::{self};
 
 fn main() {
     // init private key to zero
@@ -19,7 +18,7 @@ fn main() {
 
     // Verify if the correct number of arguments is provided
     if args.len() < 2 {
-        bad_command("general");
+        io_utils::bad_command("general");
     }
 
     // Extract the command
@@ -44,7 +43,7 @@ fn main() {
                             output_format = &args[i + 1];
                             if command != "show" && command != "sign" {
                                 // Invalid command
-                                bad_command("general");
+                                io_utils::bad_command("general");
                             }
                         }
                     }
@@ -53,7 +52,7 @@ fn main() {
                             hash_algorithm = &args[i + 1];
                             if command != "sign" && command != "verify" {
                                 // Invalid command
-                                bad_command("general");
+                                io_utils::bad_command("general");
                             }
                         }
                     }
@@ -62,7 +61,7 @@ fn main() {
                         if command == "sign" {
                             if message_to_sign_options.is_some() {
                                 // More than one argument for "sign" command
-                                bad_command("sign");
+                                io_utils::bad_command("sign");
                             } else {
                                 if i == args.len() - 1 {
                                     message_to_sign_options = Some(&args[i]);
@@ -78,7 +77,7 @@ fn main() {
                                         || public_key_hex_options.is_some()
                                     {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         message_to_verify_options = Some(&args[i]);
                                     }
@@ -88,7 +87,7 @@ fn main() {
                                         || public_key_hex_options.is_some()
                                     {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         signature_options = Some(&args[i]);
                                     }
@@ -96,7 +95,7 @@ fn main() {
                                 _ if i == args.len() - 1 => {
                                     if public_key_hex_options.is_some() {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         public_key_hex_options = Some(&args[i]);
                                     }
@@ -110,14 +109,14 @@ fn main() {
         }
         _ => {
             // Invalid command
-            bad_command("general");
+            io_utils::bad_command("general");
         }
     }
 
     match command.as_str() {
         "generate" => {
             if args.len() != 2 {
-                bad_command("generate");
+                io_utils::bad_command("generate");
             }
 
             // Initialize a random number generator
@@ -130,10 +129,10 @@ fn main() {
             public_key = private_key.public();
 
             // Save keys to files
-            save_private_key("priv.key", &private_key)
+            io_utils::save_private_key("priv.key", &private_key)
                 .map_err(|err| println!("{:?}", err))
                 .ok();
-            save_public_key("pub.key", public_key)
+            io_utils::save_public_key("pub.key", public_key)
                 .map_err(|err| println!("{:?}", err))
                 .ok();
         }
@@ -144,13 +143,13 @@ fn main() {
                 return;
             }
 
-            private_key = load_private_key("priv.key").unwrap();
+            private_key = io_utils::load_private_key("priv.key").unwrap();
             public_key = private_key.public();
 
             if output_format == "detailed" {
                 // Print private key
                 print!("private key: ");
-                print_u8_array(&private_key.key, "dec");
+                io_utils::print_u8_array(&private_key.key, "dec");
                 println!("");
 
                 println!("public key Field X: {}", cast::fq_to_dec_string(&public_key.x));
@@ -158,7 +157,7 @@ fn main() {
             } else if output_format == "hex" {
                 // Print private key
                 print!("private key: ");
-                print_u8_array(&private_key.key, "hex");
+                io_utils::print_u8_array(&private_key.key, "hex");
                 println!("");
 
                 // Print public key
@@ -168,12 +167,12 @@ fn main() {
 
                 println!("{}{}", hex_string_x, hex_string_y);
             } else {
-                bad_command("show");
+                io_utils::bad_command("show");
             }
         }
         "sign" => {
             if args.len() == 2 {
-                bad_command("sign");
+                io_utils::bad_command("sign");
             }
 
             // unwrap parameters
@@ -182,7 +181,7 @@ fn main() {
             if hash_algorithm == "poseidon"
                 && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
             {
-                bad_command("message_too_long");
+                io_utils::bad_command("message_too_long");
             }
 
             // Check if private key file exists
@@ -191,7 +190,7 @@ fn main() {
                 return;
             }
 
-            private_key = load_private_key("priv.key").unwrap();
+            private_key = io_utils::load_private_key("priv.key").unwrap();
 
             let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
 
@@ -220,7 +219,7 @@ fn main() {
         }
         "verify" => {
             if args.len() == 2 {
-                bad_command("verify");
+                io_utils::bad_command("verify");
             }
 
             // unwrap parameters
@@ -231,7 +230,7 @@ fn main() {
             if hash_algorithm == "poseidon"
                 && message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
             {
-                bad_command("message_too_long");
+                io_utils::bad_command("message_too_long");
             }
 
             let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
@@ -249,67 +248,6 @@ fn main() {
         }
     }
 }
-
-fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
-    print!("private_key:");
-
-    // Create file
-    let mut file = File::create(filename)?;
-
-    // Extract key array from private key
-    let key_array: [u8; 32] = private_key.key;
-
-    // Write the key array in 02x format, meaning 2 chars per number
-    for &num in &key_array {
-        write!(file, "{:02x}", num)?;
-        print!("{:02x?}", num);
-    }
-
-    println!("");
-
-    Ok(())
-}
-
-fn save_public_key(filename: &str, public_key: Point) -> io::Result<()> {
-    let mut file = File::create(filename)?;
-
-    let x_string_hex = cast::fq_to_hex_string(&public_key.x);
-    let y_string_hex = cast::fq_to_hex_string(&public_key.y);
-
-    write!(file, "{}{}", x_string_hex, y_string_hex).unwrap();
-
-    Ok(())
-}
-
-fn load_private_key(filename: &str) -> io::Result<PrivateKey> {
-    // Read the content of the file into a string
-    let mut private_key_hex_string = String::new();
-    File::open(filename)?.read_to_string(&mut private_key_hex_string)?;
-
-    // Create a buffer to read the content into
-    let mut numbers: [u8; 32] = [0; 32];
-
-    // Parse the hex string into a numbers
-    let key_array = hex::decode(private_key_hex_string.trim()).unwrap();
-    numbers.copy_from_slice(&key_array);
-
-    // let numbers_vec = numbers.to_vec();
-    let numbers_vec: Vec<u8> = numbers.to_vec();
-    let private_key: PrivateKey = PrivateKey::import(numbers_vec).unwrap();
-
-    Ok(private_key)
-}
-
-fn print_u8_array(arr: &[u8], format: &str) {
-    for &element in arr {
-        if format == "hex" {
-            print!("{:02x?}", element);
-        } else if format == "dec" {
-            print!("{:?}", element);
-        }
-    }
-}
-
 
 // Function to calculate hash_fq based on hash_algorithm
 fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq {
@@ -343,38 +281,10 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
         // turn the hash into Fq
         hash_fq = Fq::from_str(&hashed_sha256_message_string).unwrap();
     } else {
-        bad_command("general");
+        io_utils::bad_command("general");
     }
 
     hash_fq
-}
-
-pub fn bad_command(command: &str) {
-    match command {
-        "general" => {
-            let my_str = include_str!("safecat.txt");
-            print!("{my_str}");
-
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-        "generate" =>    
-            println!("Usage: 'safecat generate' with no extra parameters"),
-        "show" =>    
-            println!("Usage: 'safecat show [--format hex|detailed=default]'"),
-        "sign" =>
-            println!("Usage: 'safecat sign [--hash sha256|poseidon=default] [--format hex|detailed=default] <message_to_sign>'"),
-        "verify" =>
-            println!("Usage: 'safecat verify [--hash sha256|poseidon=default] <message_to_verify> <signature> <public_key>'"),
-        "message_too_long" =>
-            println!("Message too long! The maximum message lengt with Poseidon hash is 16 characters"),
-        _ => {
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-    }
-
-    std::process::exit(1);
 }
 
 fn file_exists(file_path: &str) -> bool {
