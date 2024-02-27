@@ -1,4 +1,5 @@
 mod cast;
+mod consts;
 
 use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Point, PrivateKey};
@@ -8,9 +9,6 @@ use poseidon_rs::{Fr as FrPoseidon, Poseidon};
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
-
-const MAX_POSEIDON_PERMUTATION_LEN: usize = 16;
-const PACKED_BYTE_LEN: usize = 31;
 
 fn main() {
     // init private key to zero
@@ -182,7 +180,7 @@ fn main() {
             let message_to_sign_string = message_to_sign_options.unwrap();
 
             if hash_algorithm == "poseidon"
-                && message_to_sign_string.len() > MAX_POSEIDON_PERMUTATION_LEN * PACKED_BYTE_LEN
+                && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
             {
                 bad_command("message_too_long");
             }
@@ -231,7 +229,7 @@ fn main() {
             let signature_string = signature_options.unwrap();
 
             if hash_algorithm == "poseidon"
-                && message_to_verify_string.len() > MAX_POSEIDON_PERMUTATION_LEN * PACKED_BYTE_LEN
+                && message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
             {
                 bad_command("message_too_long");
             }

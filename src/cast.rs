@@ -1,4 +1,6 @@
 /* Collection of castings functions */
+use crate::consts;
+
 use ark_ff::PrimeField as ArkPF;
 use babyjubjub_ark::{Fq, Fr, Point, Signature};
 use num::{BigInt, Num};
@@ -6,7 +8,6 @@ use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
 use std::io::{self};
 
-const PACKED_BYTE_LEN: usize = 31;
 
 pub fn public_key_from_str(key_string_hex: &str) -> io::Result<Point> {
     // Split the hex string into x and y parts
@@ -125,7 +126,7 @@ pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
                 let n = acc.len();
 
                 // Check if the current sub-vector is filled to the desired length
-                if acc[n - 1].len() == PACKED_BYTE_LEN {
+                if acc[n - 1].len() == consts::PACKED_BYTE_LEN {
                     // If filled, create a new sub-vector with the current byte
                     acc.push(vec![*b]);
                     acc
@@ -143,7 +144,7 @@ pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
         .map(|bs| Fq::from_be_bytes_mod_order(&bs))
         .rev()
         .collect::<Vec<Fq>>();
-        
+
     packed_fields
 }
 
