@@ -115,27 +115,35 @@ pub fn hex_to_dec(hex_str: &str) -> String {
         .unwrap_or_else(|_| String::from("Invalid hex number"))
 }
 
-/// Function for converting bytes to fields.
+// Converting bytes to fields
 pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
+    // Create a vector to store reversed and split bytes
     let reversed_split_bytes: Vec<Vec<u8>> =
         bs.iter()
             .rev()
             .fold(vec![vec![]], |mut acc: Vec<Vec<u8>>, b| {
                 let n = acc.len();
+
+                // Check if the current sub-vector is filled to the desired length
                 if acc[n - 1].len() == PACKED_BYTE_LEN {
+                    // If filled, create a new sub-vector with the current byte
                     acc.push(vec![*b]);
                     acc
                 } else {
+                    // If not filled, add the current byte to the existing sub-vector
                     acc[n - 1].push(*b);
                     acc
                 }
             });
+    
+    // Reverse, flatten, and convert each sub-vector of bytes to Fq            
     let packed_fields = reversed_split_bytes
         .iter()
         .map(|bs| bs.iter().rev().copied().collect::<Vec<u8>>())
         .map(|bs| Fq::from_be_bytes_mod_order(&bs))
         .rev()
         .collect::<Vec<Fq>>();
+        
     packed_fields
 }
 
