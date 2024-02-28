@@ -118,31 +118,34 @@ pub fn hex_to_dec(hex_str: &str) -> String {
 
 // Converting bytes to fields
 pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
-    // Create a vector to store reversed and split bytes
+    // Split `bs` into chunks of length PACKED_BYTE_LEN starting from the end
+    // of the slice. Done in reverse for technical reasons.
     let reversed_split_bytes: Vec<Vec<u8>> =
         bs.iter()
-            .rev()
-            .fold(vec![vec![]], |mut acc: Vec<Vec<u8>>, b| {
-                let n = acc.len();
+            .rev() // Iterate in reverse order starting from the last byte
+            .fold(vec![vec![]], |mut byte_chunks: Vec<Vec<u8>>, b| {
+                let n = byte_chunks.len();
 
-                // Check if the current sub-vector is filled to the desired length
-                if acc[n - 1].len() == consts::PACKED_BYTE_LEN {
-                    // If filled, create a new sub-vector with the current byte
-                    acc.push(vec![*b]);
-                    acc
+                // Check if the current byte chunk is full
+                if byte_chunks[n - 1].len() == consts::PACKED_BYTE_LEN {
+                    // ...and if so, start filling a new chunk
+                    byte_chunks.push(vec![*b]);
                 } else {
-                    // If not filled, add the current byte to the existing sub-vector
-                    acc[n - 1].push(*b);
-                    acc
+                    // ..and if not, add the current byte to the current chunk
+                    byte_chunks[n - 1].push(*b);
                 }
+                
+                byte_chunks
             });
-    
-    // Reverse, flatten, and convert each sub-vector of bytes to Fq            
+
+    // Appropriately map the chunks in `reversed_split_bytes` to Fq, making sure
+    // that the chunks are considered in the right order and the resulting vector is
+    // also in the right order.
     let packed_fields = reversed_split_bytes
         .iter()
-        .map(|bs| bs.iter().rev().copied().collect::<Vec<u8>>())
-        .map(|bs| Fq::from_be_bytes_mod_order(&bs))
-        .rev()
+        .map(|bs| bs.iter().rev().copied().collect::<Vec<u8>>()) // Reverse chunk bytes
+        .map(|bs| Fq::from_be_bytes_mod_order(&bs)) // Map each chunk to Fq
+        .rev() // Reverse order of field elements
         .collect::<Vec<Fq>>();
 
     packed_fields
