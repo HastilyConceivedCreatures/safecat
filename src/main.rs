@@ -1,14 +1,13 @@
-use std::env;
-use std::fs::{ self, File};
-use std::io::{self, Read, Write};
-use sha2::{Digest, Sha256};
+mod cast;
+mod io_utils;
+mod consts;
+
 use ark_std::str::FromStr;
-use babyjubjub_ark::{PrivateKey, Point, Signature, new_key, verify, Fq, Fr};
-use num_bigint::BigUint;
-use hex;
-use poseidon_rs::{Fr as FrPoseidon, Poseidon};
+use babyjubjub_ark::{new_key, verify, Fq, Point, PrivateKey};
 use ff_ce::PrimeField;
-use num::{BigInt, Num};
+use poseidon_rs::{Fr as FrPoseidon, Poseidon};
+use std::env;
+use std::fs::{self};
 
 fn main() {
     // init private key to zero
@@ -19,7 +18,7 @@ fn main() {
 
     // Verify if the correct number of arguments is provided
     if args.len() < 2 {
-        bad_command("general");
+        io_utils::bad_command("general");
     }
 
     // Extract the command
@@ -36,7 +35,6 @@ fn main() {
     // Check if the command is valid
     match command.as_str() {
         "generate" | "show" | "sign" | "verify" => {
-
             // Check for optional flags
             for i in 2..args.len() {
                 match args[i].as_str() {
@@ -45,7 +43,7 @@ fn main() {
                             output_format = &args[i + 1];
                             if command != "show" && command != "sign" {
                                 // Invalid command
-                                bad_command("general");
+                                io_utils::bad_command("general");
                             }
                         }
                     }
@@ -54,16 +52,16 @@ fn main() {
                             hash_algorithm = &args[i + 1];
                             if command != "sign" && command != "verify" {
                                 // Invalid command
-                                bad_command("general");
+                                io_utils::bad_command("general");
                             }
-                        } 
+                        }
                     }
                     _ => {
                         // Check for "sign" command and assume it's the message to sign
                         if command == "sign" {
                             if message_to_sign_options.is_some() {
                                 // More than one argument for "sign" command
-                                bad_command("sign");
+                                io_utils::bad_command("sign");
                             } else {
                                 if i == args.len() - 1 {
                                     message_to_sign_options = Some(&args[i]);
@@ -74,17 +72,22 @@ fn main() {
                         else if command == "verify" {
                             match i {
                                 _ if i == args.len() - 3 => {
-                                    if message_to_verify_options.is_some() || signature_options.is_some() || public_key_hex_options.is_some() {
+                                    if message_to_verify_options.is_some()
+                                        || signature_options.is_some()
+                                        || public_key_hex_options.is_some()
+                                    {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         message_to_verify_options = Some(&args[i]);
                                     }
                                 }
                                 _ if i == args.len() - 2 => {
-                                    if signature_options.is_some() || public_key_hex_options.is_some() {
+                                    if signature_options.is_some()
+                                        || public_key_hex_options.is_some()
+                                    {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         signature_options = Some(&args[i]);
                                     }
@@ -92,13 +95,12 @@ fn main() {
                                 _ if i == args.len() - 1 => {
                                     if public_key_hex_options.is_some() {
                                         // More than three arguments for "verify" command
-                                        bad_command("verify");
+                                        io_utils::bad_command("verify");
                                     } else {
                                         public_key_hex_options = Some(&args[i]);
                                     }
                                 }
-                                _ => {                                    
-                                }
+                                _ => {}
                             }
                         }
                     }
@@ -107,17 +109,17 @@ fn main() {
         }
         _ => {
             // Invalid command
-            bad_command("general");
+            io_utils::bad_command("general");
         }
     }
 
     match command.as_str() {
         "generate" => {
             if args.len() != 2 {
-                bad_command("generate");
+                io_utils::bad_command("generate");
             }
 
-            // Initialize a random number generator 
+            // Initialize a random number generator
             let mut rng = rand::thread_rng();
 
             // Generate a new private key
@@ -127,8 +129,12 @@ fn main() {
             public_key = private_key.public();
 
             // Save keys to files
-            save_private_key("priv.key", &private_key).map_err(|err| println!("{:?}", err)).ok();
-            save_public_key("pub.key", public_key).map_err(|err| println!("{:?}", err)).ok();
+            io_utils::save_private_key("priv.key", &private_key)
+                .map_err(|err| println!("{:?}", err))
+                .ok();
+            io_utils::save_public_key("pub.key", public_key)
+                .map_err(|err| println!("{:?}", err))
+                .ok();
         }
         "show" => {
             // Check if private key file exists
@@ -137,44 +143,45 @@ fn main() {
                 return;
             }
 
-            private_key = load_private_key("priv.key").unwrap();
+            private_key = io_utils::load_private_key("priv.key").unwrap();
             public_key = private_key.public();
 
             if output_format == "detailed" {
                 // Print private key
                 print!("private key: ");
-                print_u8_array(&private_key.key, "dec");
+                io_utils::print_u8_array(&private_key.key, "dec");
                 println!("");
 
-                println!("public key Field X: {}", fq_to_dec_string(&public_key.x));
-                println!("public key Field Y: {}", fq_to_dec_string(&public_key.y));
+                println!("public key Field X: {}", cast::fq_to_dec_string(&public_key.x));
+                println!("public key Field Y: {}", cast::fq_to_dec_string(&public_key.y));
             } else if output_format == "hex" {
                 // Print private key
                 print!("private key: ");
-                print_u8_array(&private_key.key, "hex");
+                io_utils::print_u8_array(&private_key.key, "hex");
                 println!("");
 
                 // Print public key
                 print!("public key: ");
-                let hex_string_x = fq_to_hex_string(&public_key.x);
-                let hex_string_y = fq_to_hex_string(&public_key.y);
+                let hex_string_x = cast::fq_to_hex_string(&public_key.x);
+                let hex_string_y = cast::fq_to_hex_string(&public_key.y);
 
                 println!("{}{}", hex_string_x, hex_string_y);
             } else {
-                bad_command("show");
+                io_utils::bad_command("show");
             }
-
         }
         "sign" => {
             if args.len() == 2 {
-                bad_command("sign");
+                io_utils::bad_command("sign");
             }
 
             // unwrap parameters
             let message_to_sign_string = message_to_sign_options.unwrap();
 
-            if hash_algorithm == "poseidon" && message_to_sign_string.len() > 16 {
-                bad_command("message_too_long");
+            if hash_algorithm == "poseidon"
+                && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
+            {
+                io_utils::bad_command("message_too_long");
             }
 
             // Check if private key file exists
@@ -183,34 +190,36 @@ fn main() {
                 return;
             }
 
-            private_key = load_private_key("priv.key").unwrap();
+            private_key = io_utils::load_private_key("priv.key").unwrap();
 
             let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
 
             // Print the hash
-            println!("message Hash: {}", fq_to_dec_string(&hash_fq));
+            println!("message Hash: {}", cast::fq_to_dec_string(&hash_fq));
 
             // Sign the message
             let signature = private_key.sign(hash_fq).expect("Failed to sign message");
 
             if output_format == "detailed" {
                 // Print signature
-                println!("Signature: R.X: {}", fq_to_dec_string(&signature.r_b8.x));
-                println!("Signature: R.Y: {}", fq_to_dec_string(&signature.r_b8.y));
-                println!("Signature: S: {}", fr_to_dec_string(&signature.s));
+                println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.r_b8.x));
+                println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.r_b8.y));
+                println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
             } else if output_format == "hex" {
                 // change signature variables to hex
-                let signature_x_hex = fq_to_hex_string(&signature.r_b8.x);
-                let signature_y_hex = fq_to_hex_string(&signature.r_b8.y);
-                let signature_s_hex = fr_to_hex_string(&signature.s);
+                let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
+                let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
+                let signature_s_hex = cast::fr_to_hex_string(&signature.s);
 
-                println!("Signature: {}{}{}", signature_x_hex, signature_y_hex, signature_s_hex);
+                println!(
+                    "Signature: {}{}{}",
+                    signature_x_hex, signature_y_hex, signature_s_hex
+                );
             }
-
         }
         "verify" => {
             if args.len() == 2 {
-                bad_command("verify");
+                io_utils::bad_command("verify");
             }
 
             // unwrap parameters
@@ -218,215 +227,26 @@ fn main() {
             let public_key_hex_string = public_key_hex_options.unwrap();
             let signature_string = signature_options.unwrap();
 
-            if hash_algorithm == "poseidon" && message_to_verify_string.len() > 16 {
-                bad_command("message_too_long");
+            if hash_algorithm == "poseidon"
+                && message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
+            {
+                io_utils::bad_command("message_too_long");
             }
 
             let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
 
             // Create PublicKey and signature objects
-            let public_key = public_key_from_str(&public_key_hex_string).unwrap();
-            let signature = signature_from_str(&signature_string);
+            let public_key = cast::public_key_from_str(&public_key_hex_string).unwrap();
+            let signature = cast::signature_from_str(&signature_string);
 
             let correct = verify(public_key, signature, hash_fq);
 
             println!("signature is {}", correct);
-
         }
         _ => {
             println!("Unknown command: {}", command);
         }
     }
-}
-
-fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
-    print!("private_key:");
-
-    // Create file
-    let mut file = File::create(filename)?;
-
-    // Extract key array from private key
-    let key_array: [u8; 32] = private_key.key;
-
-    // Write the key array in 02x format, meaning 2 chars per number
-    for &num in &key_array {
-        write!(file, "{:02x}", num)?; 
-        print!("{:02x?}", num);
-    }
-    
-    println!("");
-
-    Ok(())
-}
-
-fn save_public_key(filename: &str, public_key: Point)  -> io::Result<()> {
-    let mut file = File::create(filename)?;
-
-    let x_string_hex = fq_to_hex_string(&public_key.x);
-    let y_string_hex = fq_to_hex_string(&public_key.y);
-        
-    write!(file, "{}{}", x_string_hex, y_string_hex).unwrap();
-    
-    Ok(())
-}
-
-fn load_private_key(filename: &str) -> io::Result<PrivateKey> {
-    // Read the content of the file into a string
-    let mut private_key_hex_string = String::new();
-    File::open(filename)?.read_to_string(&mut private_key_hex_string)?;
-    
-    // Create a buffer to read the content into
-    let mut numbers: [u8; 32] = [0; 32];
-
-    // Parse the hex string into a numbers
-    let key_array = hex::decode(private_key_hex_string.trim()).unwrap();
-    numbers.copy_from_slice(&key_array);
-
-    // let numbers_vec = numbers.to_vec();
-    let numbers_vec: Vec<u8> = numbers.to_vec();
-    let private_key: PrivateKey = PrivateKey::import(numbers_vec).unwrap();
-
-    Ok(private_key)
-}
-
-fn public_key_from_str(key_string_hex: &str) -> io::Result<Point> {
-    // Split the hex string into x and y parts
-    let (x_string_hex, y_string_hex) = key_string_hex.split_at(64);
-
-    // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16).unwrap();
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16).unwrap();
-
-    // Convert BigUint to Fq
-    let x = Fq::from(x_decimal);
-    let y = Fq::from(y_decimal);
-
-    Ok(Point { x, y })
-}
-
-fn signature_from_str(signature_string_hex: &str) -> Signature {
-    // Split the string at indices 64 and 128
-    let (x_string_hex, temp) = signature_string_hex.split_at(64);
-    let (y_string_hex, s_string_hex) = temp.split_at(64);
-
-    // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16).unwrap();
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16).unwrap();
-    let s_decimal = BigUint::from_str_radix(s_string_hex, 16).unwrap();
-
-    // Convert BigUint to Fq
-    let x = Fq::from(x_decimal);
-    let y = Fq::from(y_decimal);
-    let s = Fr::from(s_decimal);
-
-    let r_b8 = Point { x, y };
-
-    Signature { r_b8, s}
-}
-
-
-fn print_u8_array(arr: &[u8], format: &str) {
-    for &element in arr {
-        if format == "hex" {
-            print!("{:02x?}", element);
-        } else if format == "dec" {
-            print!("{:?}", element);
-        }
-    }
-}
-
-pub fn hash_to_bigint(hash: &[u8]) -> BigUint {
-    // Reverse the bytes because BigUint uses little-endian order
-    let reversed_hash: Vec<u8> = hash.iter().rev().cloned().collect();
-
-    // Create a BigUint from the reversed hash bytes
-    BigUint::from_bytes_le(&reversed_hash)
-}
-
-pub fn fq_to_hex_string(num: &Fq) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-    let num_hex_string = format!("{:0>64x}", num_decimal);
-
-    // return the hex string
-    num_hex_string
-}
-
-pub fn fq_to_dec_string(num: &Fq) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-
-    // return the hex string
-    num_decimal.to_string()
-}
-
-pub fn fr_to_hex_string(num: &Fr) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-    let num_hex_string = format!("{:0>64x}", num_decimal);
-
-    // return the hex string
-    num_hex_string
-}
-
-pub fn fr_to_dec_string(num: &Fr) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-
-    // return the hex string
-    num_decimal.to_string()
-}
-
-pub fn hash256_as_string(message: &str) -> String {
-    // create hash of the message
-    let mut hasher = Sha256::new();
-    hasher.update(message.as_bytes());
-    let hashed_message = hasher.finalize();
-
-
-    //Convert the hash result to a BigInt<4> -> hex string -> fq
-    let hashed_message_bigint = hash_to_bigint(&hashed_message[..]);
-    let hashed_message_string = hashed_message_bigint.to_str_radix(10);
-
-    hashed_message_string
-}
-
-pub fn hash_as_hex_string(message: &String) -> String {
-    // create hash of the message
-    let mut hasher = Sha256::new();
-    hasher.update(message.as_bytes());
-    let hashed_message = hasher.finalize();
-
-
-    //Convert the hash result to a BigInt<4> -> hex string -> fq
-    let hashed_message_bigint = hash_to_bigint(&hashed_message[..]);
-    let hashed_hex_message_string = format!("{:0>64x}", hashed_message_bigint);
-
-    hashed_hex_message_string
-}
-
-fn convert_hex_to_dec(hex_str: &str) -> String {
-    let hex_value = if hex_str.starts_with("0x") {
-        &hex_str[2..] // Remove the '0x' prefix
-    } else {
-        hex_str
-    };
-
-    BigInt::from_str_radix(hex_value, 16)
-        .map(|dec_value| dec_value.to_string())
-        .unwrap_or_else(|_| String::from("Invalid hex number"))
 }
 
 // Function to calculate hash_fq based on hash_algorithm
@@ -436,8 +256,11 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
     if hash_algorithm == "poseidon" {
         let bytes = message_to_verify_string.as_bytes();
 
-        // Convert each byte into an element of the finite field
-        let fr_vector: Vec<FrPoseidon> = bytes.iter().map(|&b| FrPoseidon::from_str(&b.to_string()).unwrap()).collect();
+        // Pack the message bytes into right-aligned 31-byte chunks
+        let fr_vector: Vec<FrPoseidon> = cast::bytes_to_fields(bytes)
+            .iter()
+            .map(|&b| FrPoseidon::from_str(&b.to_string()).unwrap())
+            .collect();
 
         // Create a Poseidon hash function
         let poseidon = Poseidon::new();
@@ -447,51 +270,67 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 
         // turn into a string
         let mut poseidon_hash_str = poseidon_hash.into_repr().to_string();
-        poseidon_hash_str = convert_hex_to_dec(&poseidon_hash_str);
+        poseidon_hash_str = cast::hex_to_dec(&poseidon_hash_str);
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&poseidon_hash_str).unwrap();
     } else if hash_algorithm == "sha256" {
         //  hash the message
-        let hashed_sha256_message_string = hash256_as_string(message_to_verify_string);
+        let hashed_sha256_message_string = cast::hash256_as_string(message_to_verify_string);
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&hashed_sha256_message_string).unwrap();
     } else {
-        bad_command("general");
+        io_utils::bad_command("general");
     }
 
     hash_fq
 }
 
-pub fn bad_command(command: &str) {
-    match command {
-        "general" => {
-            let my_str = include_str!("safecat.txt");
-            print!("{my_str}");
-
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-        "generate" =>    
-            println!("Usage: 'safecat generate' with no extra parameters"),
-        "show" =>    
-            println!("Usage: 'safecat show [--format hex|detailed=default]'"),
-        "sign" =>
-            println!("Usage: 'safecat sign [--hash sha256|poseidon=default] [--format hex|detailed=default] <message_to_sign>'"),
-        "verify" =>
-            println!("Usage: 'safecat verify [--hash sha256|poseidon=default] <message_to_verify> <signature> <public_key>'"),
-        "message_too_long" =>
-            println!("Message too long! The maximum message lengt with Poseidon hash is 16 characters"),
-        _ => {
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-    }
-    
-    std::process::exit(1);
-}
-
 fn file_exists(file_path: &str) -> bool {
     fs::metadata(file_path).is_ok()
 }
+
+/// Test for the byte packing functionality
+#[test]
+fn byte_packing_test() {
+    // Test case 1: Single field from 3 bytes
+    let bytes: &[u8] = &[0x01, 0x02, 0x03];
+    let fields = cast::bytes_to_fields(bytes);
+    assert!(fields.len() == 1);
+    assert!(fields[0] == Fq::from_str(&cast::hex_to_dec("0x010203")).unwrap());
+
+    // Test case 2: Multiple fields from 64 bytes
+    let bytes: Vec<u8> = (0..64).collect();
+    let fields = cast::bytes_to_fields(&bytes);
+    assert!(fields.len() == 3);
+    assert!(fields[0] == Fq::from_str(&cast::hex_to_dec("0x0001")).unwrap());
+    assert!(
+        fields[1]
+            == Fq::from_str(&cast::hex_to_dec(
+                "0x02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+            ))
+            .unwrap()
+    );
+    assert!(
+        fields[2]
+            == Fq::from_str(&cast::hex_to_dec(
+                "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+            ))
+            .unwrap()
+    );
+}
+
+/// Test for the Poseidon hash functionality
+#[test]
+fn test_poseidon_hash() {
+    let msg = "This is a run-through of the Poseidon permutation function.";
+    let hash = calculate_hash_fq(msg, "poseidon");
+    assert!(
+        hash == Fq::from_str(&cast::hex_to_dec(
+            "0x0b5de89054f5ff651f919eb397f4a125e9ba2aebd175dd809fe8fd02569d8087"
+        ))
+        .unwrap()
+    );
+}
+
