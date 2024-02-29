@@ -1,6 +1,6 @@
-mod aux;
+mod data_processing;
 
-use aux::bytes_to_fields;
+use data_processing::bytes_to_fields;
 
 pub fn message_to_fields<N,M>(msg: str<N>) -> ([Field; M], u32)
 {
