@@ -1,4 +1,4 @@
-mod cast;
+mod cast; // module for casting between types
 mod io_utils;
 mod consts;
 
@@ -9,7 +9,7 @@ use poseidon_rs::{Fr as FrPoseidon, Poseidon};
 use std::env;
 use std::fs::{self};
 
-use clap::{arg, Command};
+use clap::{arg, Command}; // Command Line Argument Parser
 
 fn cli() -> Command {
     Command::new("safecat")
@@ -50,6 +50,26 @@ fn cli() -> Command {
                      .require_equals(true)
                 )
         )
+        .subcommand(
+            Command::new("verify")
+                .about("Verify a message using BabyJubJub")
+                .arg(arg!(--"hash" <HASH>)
+                     .value_parser(["poseidon", "sha256"])
+                     .require_equals(false)
+                     .default_missing_value("poseidon")
+                     .default_value("poseidon")
+                )
+                .arg_required_else_help(true)
+                .arg(arg!(<MESSAGE> "message")
+                     .require_equals(true)
+                )
+                .arg(arg!(<SIGNATURE> "signature")
+                     .require_equals(true)
+                )
+                .arg(arg!(<PUBLICKEY> "public key")
+                     .require_equals(true)
+                )
+        )
 }
 
 fn main() {
@@ -72,8 +92,19 @@ fn main() {
             );
             sign(msg.to_string(), hash.to_string(), format.to_string())
         },
+        Some(("verify", sub_matches)) => {
+            let msg = sub_matches.get_one::<String>("MESSAGE").expect("required").to_string();
+            let signature = sub_matches.get_one::<String>("SIGNATURE").expect("required").to_string();
+            let private_key = sub_matches.get_one::<String>("PUBLICKEY").expect("required").to_string();
+            let hash = sub_matches.get_one::<String>("hash").expect("defaulted in clap").to_string();
+            println!(
+                "Verifying {}",
+                msg
+            );
+            verify_signature(msg, signature, private_key, hash)
+        },
         Some((_, _)) => {
-            print!("unknown command")
+            print!("unknown command, usage 'safecat <generate|show|sign|verify>'")
         },   
         None => todo!()
         }
@@ -172,226 +203,13 @@ fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: S
             }
 }
 
-fn oldmain() {
-    // init private key to zero
-    let private_key: PrivateKey;
-    let public_key: Point;
+fn verify_signature(message_to_verify_string: String, signature_string: String, public_key_hex_string: String , hash_algorithm: String) {
+            println!("message_to_verify_string: {}", message_to_verify_string);
+            println!("public_key_hex_string: {}", public_key_hex_string);
+            println!("signature_string: {}", signature_string);
 
-    let args: Vec<String> = env::args().collect();
-
-    // Verify if the correct number of arguments is provided
-    if args.len() < 2 {
-        io_utils::bad_command("general");
-    }
-
-    // Extract the command
-    let command = &args[1];
-
-    let mut output_format = "detailed";
-    let mut hash_algorithm = "poseidon";
-
-    let mut message_to_sign_options: Option<&str> = None;
-    let mut message_to_verify_options: Option<&str> = None;
-    let mut signature_options: Option<&str> = None;
-    let mut public_key_hex_options: Option<&str> = None;
-
-    // Check if the command is valid
-    match command.as_str() {
-        "generate" | "show" | "sign" | "verify" => {
-            // Check for optional flags
-            for i in 2..args.len() {
-                match args[i].as_str() {
-                    "--format" => {
-                        if i + 1 < args.len() {
-                            output_format = &args[i + 1];
-                            if command != "show" && command != "sign" {
-                                // Invalid command
-                                io_utils::bad_command("general");
-                            }
-                        }
-                    }
-                    "--hash" => {
-                        if i + 1 < args.len() {
-                            hash_algorithm = &args[i + 1];
-                            if command != "sign" && command != "verify" {
-                                // Invalid command
-                                io_utils::bad_command("general");
-                            }
-                        }
-                    }
-                    _ => {
-                        // Check for "sign" command and assume it's the message to sign
-                        if command == "sign" {
-                            if message_to_sign_options.is_some() {
-                                // More than one argument for "sign" command
-                                io_utils::bad_command("sign");
-                            } else {
-                                if i == args.len() - 1 {
-                                    message_to_sign_options = Some(&args[i]);
-                                }
-                            }
-                        }
-                        // Check for "verify" command and assign values to the variables
-                        else if command == "verify" {
-                            match i {
-                                _ if i == args.len() - 3 => {
-                                    if message_to_verify_options.is_some()
-                                        || signature_options.is_some()
-                                        || public_key_hex_options.is_some()
-                                    {
-                                        // More than three arguments for "verify" command
-                                        io_utils::bad_command("verify");
-                                    } else {
-                                        message_to_verify_options = Some(&args[i]);
-                                    }
-                                }
-                                _ if i == args.len() - 2 => {
-                                    if signature_options.is_some()
-                                        || public_key_hex_options.is_some()
-                                    {
-                                        // More than three arguments for "verify" command
-                                        io_utils::bad_command("verify");
-                                    } else {
-                                        signature_options = Some(&args[i]);
-                                    }
-                                }
-                                _ if i == args.len() - 1 => {
-                                    if public_key_hex_options.is_some() {
-                                        // More than three arguments for "verify" command
-                                        io_utils::bad_command("verify");
-                                    } else {
-                                        public_key_hex_options = Some(&args[i]);
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        _ => {
-            // Invalid command
-            io_utils::bad_command("general");
-        }
-    }
-
-    match command.as_str() {
-        "generate" => {
-            if args.len() != 2 {
-                io_utils::bad_command("generate");
-            }
-
-            // Initialize a random number generator
-            let mut rng = rand::thread_rng();
-
-            // Generate a new private key
-            private_key = new_key(&mut rng);
-
-            // Compute the corresponding public key
-            public_key = private_key.public();
-
-            // Save keys to files
-            io_utils::save_private_key("priv.key", &private_key)
-                .map_err(|err| println!("{:?}", err))
-                .ok();
-            io_utils::save_public_key("pub.key", public_key)
-                .map_err(|err| println!("{:?}", err))
-                .ok();
-        }
-        "show" => {
-            // Check if private key file exists
-            if !file_exists("priv.key") {
-                println!("No key was generated yet.");
-                return;
-            }
-
-            private_key = io_utils::load_private_key("priv.key").unwrap();
-            public_key = private_key.public();
-
-            if output_format == "detailed" {
-                // Print private key
-                print!("private key: ");
-                io_utils::print_u8_array(&private_key.key, "dec");
-                println!("");
-
-                println!("public key Field X: {}", cast::fq_to_dec_string(&public_key.x));
-                println!("public key Field Y: {}", cast::fq_to_dec_string(&public_key.y));
-            } else if output_format == "hex" {
-                // Print private key
-                print!("private key: ");
-                io_utils::print_u8_array(&private_key.key, "hex");
-                println!("");
-
-                // Print public key
-                print!("public key: ");
-                let hex_string_x = cast::fq_to_hex_string(&public_key.x);
-                let hex_string_y = cast::fq_to_hex_string(&public_key.y);
-
-                println!("{}{}", hex_string_x, hex_string_y);
-            } else {
-                io_utils::bad_command("show");
-            }
-        }
-        "sign" => {
-            if args.len() == 2 {
-                io_utils::bad_command("sign");
-            }
-
-            // unwrap parameters
-            let message_to_sign_string = message_to_sign_options.unwrap();
-
-            if hash_algorithm == "poseidon"
-                && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
-            {
-                io_utils::bad_command("message_too_long");
-            }
-
-            // Check if private key file exists
-            if !file_exists("priv.key") {
-                println!("No key was generated yet.");
-                return;
-            }
-
-            private_key = io_utils::load_private_key("priv.key").unwrap();
-
-            let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
-
-            // Print the hash
-            println!("message Hash: {}", cast::fq_to_dec_string(&hash_fq));
-
-            // Sign the message
-            let signature = private_key.sign(hash_fq).expect("Failed to sign message");
-
-            if output_format == "detailed" {
-                // Print signature
-                println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.r_b8.x));
-                println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.r_b8.y));
-                println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
-            } else if output_format == "hex" {
-                // change signature variables to hex
-                let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
-                let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
-                let signature_s_hex = cast::fr_to_hex_string(&signature.s);
-
-                println!(
-                    "Signature: {}{}{}",
-                    signature_x_hex, signature_y_hex, signature_s_hex
-                );
-            }
-        }
-        "verify" => {
-            if args.len() == 2 {
-                io_utils::bad_command("verify");
-            }
-
-            // unwrap parameters
-            let message_to_verify_string = message_to_verify_options.unwrap();
-            let public_key_hex_string = public_key_hex_options.unwrap();
-            let signature_string = signature_options.unwrap();
-
-            if hash_algorithm == "poseidon"
-                && message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
+            if  hash_algorithm == "poseidon" &&
+                message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
             {
                 io_utils::bad_command("message_too_long");
             }
@@ -405,11 +223,6 @@ fn oldmain() {
             let correct = verify(public_key, signature, hash_fq);
 
             println!("signature is {}", correct);
-        }
-        _ => {
-            println!("Unknown command: {}", command);
-        }
-    }
 }
 
 // Function to calculate hash_fq based on hash_algorithm
