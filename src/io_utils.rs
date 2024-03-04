@@ -1,14 +1,12 @@
 /* Collection of IO functions for 
    saving, loading, and printing */
 
-use crate::cast;
-
-use babyjubjub_ark::{Point,PrivateKey};
+use babyjubjub_ark::PrivateKey;
 use std::io::{self, Read, Write};
 use std::fs::{File};
 
 pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
-    print!("private_key:");
+    print!("New private_key: ");
 
     // Create file
     let mut file = File::create(filename)?;
@@ -24,16 +22,13 @@ pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<
 
     println!("");
 
-    Ok(())
-}
 
-pub fn save_public_key(filename: &str, public_key: Point) -> io::Result<()> {
-    let mut file = File::create(filename)?;
+    // ANSI escape codes for green color
+    let green_color_code = "\x1b[32m";
+    let reset_color_code = "\x1b[0m";
 
-    let x_string_hex = cast::fq_to_hex_string(&public_key.x);
-    let y_string_hex = cast::fq_to_hex_string(&public_key.y);
-
-    write!(file, "{}{}", x_string_hex, y_string_hex).unwrap();
+    // Notify after saving the private key into a file
+    println!("Saved the new private key in {}{}{} file", green_color_code, filename, reset_color_code);
 
     Ok(())
 }

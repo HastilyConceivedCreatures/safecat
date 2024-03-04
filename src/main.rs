@@ -3,10 +3,9 @@ mod io_utils;
 mod consts;
 
 use ark_std::str::FromStr;
-use babyjubjub_ark::{new_key, verify, Fq, Point, PrivateKey};
+use babyjubjub_ark::{new_key, verify, Fq};
 use ff_ce::PrimeField;
 use poseidon_rs::{Fr as FrPoseidon, Poseidon};
-use std::env;
 use std::fs::{self};
 
 use clap::{arg, Command}; // Command Line Argument Parser
@@ -18,7 +17,7 @@ fn main() {
     // Match the subcommand and execute the corresponding logic
     match matches.subcommand() {
         Some(("generate", _)) => {
-            generate()
+            generate("priv.key")
         },
         Some(("show", sub_matches)) => {
             let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
@@ -115,22 +114,16 @@ fn cli() -> Command {
         )
 }
 
-// Generates a new private key, computes the corresponding public key, and saves them to file
-fn generate() {
+// Generates a new private key and saves it to file
+fn generate(privatekey_filename: &str) {
     // Initialize a random number generator
     let mut rng = rand::thread_rng();
  
     // Generate a new private key
     let private_key = new_key(&mut rng);
 
-    // Compute the corresponding public key
-    let public_key = private_key.public();
-
     // Save keys to files
-    io_utils::save_private_key("priv.key", &private_key)
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-    io_utils::save_public_key("pub.key", public_key)
+    io_utils::save_private_key(privatekey_filename, &private_key)
         .map_err(|err| println!("{:?}", err))
         .ok();
 }
