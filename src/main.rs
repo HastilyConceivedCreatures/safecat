@@ -11,14 +11,57 @@ use std::fs::{self};
 
 use clap::{arg, Command}; // Command Line Argument Parser
 
+fn main() {
+    // Parse command-line arguments using the configured CLI structure
+    let matches = cli().get_matches();
+
+    // Match the subcommand and execute the corresponding logic
+    match matches.subcommand() {
+        Some(("generate", _)) => {
+            generate()
+        },
+        Some(("show", sub_matches)) => {
+            let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
+            show(format.to_string())
+        },
+        Some(("sign", sub_matches)) => {
+            let msg = sub_matches.get_one::<String>("MESSAGE").expect("required");
+            let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
+            let hash = sub_matches.get_one::<String>("hash").expect("defaulted in clap");
+            println!(
+                "Signing {}",
+                msg
+            );
+            sign(msg.to_string(), hash.to_string(), format.to_string())
+        },
+        Some(("verify", sub_matches)) => {
+            let msg = sub_matches.get_one::<String>("MESSAGE").expect("required").to_string();
+            let signature = sub_matches.get_one::<String>("SIGNATURE").expect("required").to_string();
+            let private_key = sub_matches.get_one::<String>("PUBLICKEY").expect("required").to_string();
+            let hash = sub_matches.get_one::<String>("hash").expect("defaulted in clap").to_string();
+            println!(
+                "Verifying {}",
+                msg
+            );
+            verify_signature(msg, signature, private_key, hash)
+        },
+        Some((_, _)) => {
+            print!("unknown command, usage 'safecat <generate|show|sign|verify>'")
+        },   
+        None => todo!()
+        }
+}
+
+// CLI configuration function
 fn cli() -> Command {
+    // Create the top-level 'safecat' command
     Command::new("safecat")
-        .subcommand_required(true)
-        .arg_required_else_help(true)
-        .allow_external_subcommands(true)
+        .subcommand_required(true) // Specify that a subcommand is required
+        .arg_required_else_help(true) // Ensure that at least one argument is required, or display help
+        .allow_external_subcommands(true) // Allow external subcommands to be executed
         .subcommand(
             Command::new("generate")
-                .about("Generates a private key")
+                .about("Generates a private key") 
         )
         .subcommand(
             Command::new("show")
@@ -72,44 +115,7 @@ fn cli() -> Command {
         )
 }
 
-fn main() {
-    let matches = cli().get_matches();
-    match matches.subcommand() {
-        Some(("generate", _)) => {
-            generate()
-        },
-        Some(("show", sub_matches)) => {
-            let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
-            show(format.to_string())
-        },
-        Some(("sign", sub_matches)) => {
-            let msg = sub_matches.get_one::<String>("MESSAGE").expect("required");
-            let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
-            let hash = sub_matches.get_one::<String>("hash").expect("defaulted in clap");
-            println!(
-                "Signing {}",
-                msg
-            );
-            sign(msg.to_string(), hash.to_string(), format.to_string())
-        },
-        Some(("verify", sub_matches)) => {
-            let msg = sub_matches.get_one::<String>("MESSAGE").expect("required").to_string();
-            let signature = sub_matches.get_one::<String>("SIGNATURE").expect("required").to_string();
-            let private_key = sub_matches.get_one::<String>("PUBLICKEY").expect("required").to_string();
-            let hash = sub_matches.get_one::<String>("hash").expect("defaulted in clap").to_string();
-            println!(
-                "Verifying {}",
-                msg
-            );
-            verify_signature(msg, signature, private_key, hash)
-        },
-        Some((_, _)) => {
-            print!("unknown command, usage 'safecat <generate|show|sign|verify>'")
-        },   
-        None => todo!()
-        }
-}
-
+// Generates a new private key, computes the corresponding public key, and saves them to file
 fn generate() {
     // Initialize a random number generator
     let mut rng = rand::thread_rng();
@@ -129,6 +135,7 @@ fn generate() {
         .ok();
 }
 
+// Displays private and public keys based on the specified output format.
 fn show(output_format: String) {
     // Check if private key file exists
     if !file_exists("priv.key") {
@@ -162,6 +169,7 @@ fn show(output_format: String) {
     }
 }
 
+// Signs a message using BabyJubJub based on the specified hash algorithm and output format.
 fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: String) {
             if hash_algorithm == "poseidon"
                 && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
@@ -203,6 +211,7 @@ fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: S
             }
 }
 
+// Verifies a message signature using BabyJubJub based on the specified hash algorithm.
 fn verify_signature(message_to_verify_string: String, signature_string: String, public_key_hex_string: String , hash_algorithm: String) {
             println!("message_to_verify_string: {}", message_to_verify_string);
             println!("public_key_hex_string: {}", public_key_hex_string);
@@ -225,7 +234,7 @@ fn verify_signature(message_to_verify_string: String, signature_string: String, 
             println!("signature is {}", correct);
 }
 
-// Function to calculate hash_fq based on hash_algorithm
+// Calculateד hash_fq based on hash_algorithm
 fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq {
     let mut hash_fq = Fq::from_str("0").unwrap();
 
@@ -263,6 +272,7 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
     hash_fq
 }
 
+// Checks if the file at the specified path exists
 fn file_exists(file_path: &str) -> bool {
     fs::metadata(file_path).is_ok()
 }
