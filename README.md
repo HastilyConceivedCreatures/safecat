@@ -37,4 +37,4 @@ Install Rust, and run `cargo build`.
     ```
 
 ## Limitations
-Poseidon hash is limited to strings of 16 characters.
+Poseidon hash is limited to strings of 496 characters.
