@@ -44,8 +44,15 @@ fn main() {
             );
             verify_signature(msg, signature, private_key, hash)
         },
+        Some(("assert", sub_matches)) => {
+            let public_key = sub_matches.get_one::<String>("PUBLICKEY").expect("required").to_string();
+            let cert_type = *sub_matches.get_one("TYPE").expect("required");
+            let expiration = *sub_matches.get_one("EXPIRATION").expect("required");
+            let birth = *sub_matches.get_one("BIRTH").expect("required");
+            assert(public_key, cert_type, expiration, birth);
+        },
         Some((_, _)) => {
-            print!("unknown command, usage 'safecat <generate|show-keys|sign|verify>'")
+            print!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
         },   
         None => todo!()
         }
@@ -110,6 +117,26 @@ fn cli() -> Command {
                 )
                 .arg(arg!(<PUBLICKEY> "public key")
                      .require_equals(true)
+                )
+        )
+        .subcommand(
+            Command::new("assert")
+                .about("Creates a certificate for an assertion") 
+                .arg_required_else_help(true)
+                .arg(arg!(<PUBLICKEY> "publick key")
+                     .require_equals(true)
+                )
+                .arg(arg!(<TYPE> "certificate type")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u32))
+                )
+                .arg(arg!(<EXPIRATION> "expiration date")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u64))
+                )
+                .arg(arg!(<BIRTH> "birth date")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u64))
                 )
         )
 }
@@ -225,6 +252,20 @@ fn verify_signature(message_to_verify_string: String, signature_string: String, 
     let correct = verify(public_key, signature, hash_fq);
 
     println!("signature is {}", correct);
+}
+
+// Creates a certificate
+fn assert(public_key_str: String, cert_type: u32, expiration_date: u64, birthdate: u64) {
+    // json of each certificate component
+    let to_json         = format!(r#""to": {}"#, public_key_str);
+    let cert_type_json  = format!(r#""type": {}"#, cert_type);
+    let bdate_json      = format!(r#""expdate": {}"#, birthdate);
+    let expdate_json    = format!(r#""bdate": {}"#, expiration_date);
+
+    // inner part of certificate json
+    let cert_json_inner = format!(r#"{},{}, {}, {}"#, to_json, cert_type_json, bdate_json, expdate_json);
+
+    println!(r#""{{{}}}""#, cert_json_inner);
 }
 
 // Calculateד hash_fq based on hash_algorithm
