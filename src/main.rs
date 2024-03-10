@@ -266,15 +266,15 @@ fn assert(public_key_str: String, cert_type: u32, expiration_date: u64, birthdat
     io_utils::verify_timestamp(birthdate, true);
 
     // json of each certificate component
-    let public_key_x_json   = format!(r#""x": {}"#, pubic_key_x_str);
-    let public_key_y_json   = format!(r#""y": {}"#, pubic_key_y_str);
-    let cert_type_json      = format!(r#""type": {}"#, cert_type);
-    let bdate_json          = format!(r#""expdate": {}"#, birthdate);
-    let expdate_json        = format!(r#""bdate": {}"#, expiration_date);
+    let public_key_x_json   = format!(r#""x":{}"#, pubic_key_x_str);
+    let public_key_y_json   = format!(r#""y":{}"#, pubic_key_y_str);
+    let cert_type_json      = format!(r#""type":{}"#, cert_type);
+    let bdate_json          = format!(r#""expdate":{}"#, birthdate);
+    let expdate_json        = format!(r#""bdate":{}"#, expiration_date);
 
 
     // inner part of certificate json
-    let cert_json_inner = format!(r#"{},{},{}, {}, {}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
+    let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
 
     println!(r#""{{{}}}""#, cert_json_inner);
 }
