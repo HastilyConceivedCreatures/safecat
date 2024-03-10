@@ -259,6 +259,12 @@ fn assert(public_key_str: String, cert_type: u32, expiration_date: u64, birthdat
     // validate public key input and split it into x and y
     let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&public_key_str);
 
+    // validate expiration date is in the future
+    io_utils::verify_timestamp(expiration_date, false);
+
+    // validate expiration date is in the past
+    io_utils::verify_timestamp(birthdate, true);
+
     // json of each certificate component
     let public_key_x_json   = format!(r#""x": {}"#, pubic_key_x_str);
     let public_key_y_json   = format!(r#""y": {}"#, pubic_key_y_str);
