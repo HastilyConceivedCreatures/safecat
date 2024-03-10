@@ -52,7 +52,7 @@ fn main() {
             assert(public_key, cert_type, expiration, birth);
         },
         Some((_, _)) => {
-            print!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
+            println!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
         },   
         None => todo!()
         }
@@ -256,14 +256,19 @@ fn verify_signature(message_to_verify_string: String, signature_string: String, 
 
 // Creates a certificate
 fn assert(public_key_str: String, cert_type: u32, expiration_date: u64, birthdate: u64) {
+    // validate public key input and split it into x and y
+    let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&public_key_str);
+
     // json of each certificate component
-    let to_json         = format!(r#""to": {}"#, public_key_str);
-    let cert_type_json  = format!(r#""type": {}"#, cert_type);
-    let bdate_json      = format!(r#""expdate": {}"#, birthdate);
-    let expdate_json    = format!(r#""bdate": {}"#, expiration_date);
+    let public_key_x_json   = format!(r#""x": {}"#, pubic_key_x_str);
+    let public_key_y_json   = format!(r#""y": {}"#, pubic_key_y_str);
+    let cert_type_json      = format!(r#""type": {}"#, cert_type);
+    let bdate_json          = format!(r#""expdate": {}"#, birthdate);
+    let expdate_json        = format!(r#""bdate": {}"#, expiration_date);
+
 
     // inner part of certificate json
-    let cert_json_inner = format!(r#"{},{}, {}, {}"#, to_json, cert_type_json, bdate_json, expdate_json);
+    let cert_json_inner = format!(r#"{},{},{}, {}, {}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
 
     println!(r#""{{{}}}""#, cert_json_inner);
 }

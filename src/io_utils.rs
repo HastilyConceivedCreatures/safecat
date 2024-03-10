@@ -89,3 +89,23 @@ pub fn bad_command(command: &str) {
 
     std::process::exit(1);
 }
+
+// splits a 128 hex string into two 64 strings
+pub fn split_hex_string(input: &str) -> (String, String) {
+    // Check if the input string has a length of 128 characters
+    if input.len() != 128 {
+        println!("public key is too short: must be a 128 characters hex");
+        std::process::exit(1);
+    }
+
+    // Check if the input string contains only valid hex characters
+    if !input.chars().all(|c| c.is_digit(16)) {
+        println!("public key is not a hex number");
+        std::process::exit(1);
+    }
+
+    // Split the string into two halves of length 64
+    let (first_half, second_half) = input.split_at(64);
+
+    (first_half.to_string(), second_half.to_string())
+}
