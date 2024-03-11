@@ -275,8 +275,17 @@ fn assert(public_key_str: String, cert_type: u32, expiration_date: u64, birthdat
 
     // inner part of certificate json
     let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
+    let cert_json = format!(r#""{{{}}}""#, cert_json_inner);
 
-    println!(r#""{{{}}}""#, cert_json_inner);
+    let base_filename = format!("{}-{}", public_key_str, cert_type);
+
+    // save certificates to file
+    let filename = io_utils::save_certificate(&base_filename, &cert_json);
+
+    println!("The certificate was saved to file: {}", filename);
+
+    print!("Certificate: ");
+    println!("{}", cert_json);
 }
 
 // Calculateד hash_fq based on hash_algorithm

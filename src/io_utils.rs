@@ -3,7 +3,7 @@
 
 use babyjubjub_ark::PrivateKey;
 use std::io::{self, Read, Write};
-use std::fs::{File};
+use std::fs::{write, File};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
@@ -150,4 +150,32 @@ pub fn verify_timestamp(timestamp: u64, past: bool) {
             println!("{} is a timestamp more than 10 years in the future", timestamp);
         }
     }
+}
+
+// saves a certificate
+pub fn save_certificate(base_filename: &str, certificate: &str) -> String  {
+
+    // if filename exists, add  suffix to it such as "filename-1"
+    let mut filename_index = 1;
+    let mut filename = base_filename.to_string();
+
+    while file_exists("certs/created", &filename) {
+        filename = format!("{}-{}", base_filename, filename_index); 
+        filename_index += 1;
+    }
+
+    let filename_with_path = format!("certs/created/{}", filename);
+
+    // Write certificate to file
+    write(filename_with_path.clone(), certificate).expect("Unable to write file");
+
+    filename_with_path
+
+}
+
+// checks if "filename" exists in "folder"
+pub fn file_exists(folder: &str, filename: &str) -> bool {
+    let current_dir = std::env::current_dir().unwrap();
+    let file_path = current_dir.join(folder).join(filename);
+    file_path.exists()
 }
