@@ -1,10 +1,12 @@
 /* Collection of IO functions for 
    saving, loading, and printing */
 
-use babyjubjub_ark::PrivateKey;
+use babyjubjub_ark::{PrivateKey, Signature};
 use std::io::{self, Read, Write};
-use std::fs::{write, File};
+use std::fs::File;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::cast; // module for casting between types
 
 pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
     print!("New private_key: ");
@@ -153,7 +155,7 @@ pub fn verify_timestamp(timestamp: u64, past: bool) {
 }
 
 // saves a certificate
-pub fn save_certificate(base_filename: &str, certificate: &str) -> String  {
+pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signature) -> String  {
 
     // if filename exists, add  suffix to it such as "filename-1"
     let mut filename_index = 1;
@@ -166,8 +168,19 @@ pub fn save_certificate(base_filename: &str, certificate: &str) -> String  {
 
     let filename_with_path = format!("certs/created/{}", filename);
 
-    // Write certificate to file
-    write(filename_with_path.clone(), certificate).expect("Unable to write file");
+    // create signature json string
+    let s_rx = cast::fq_to_dec_string(&signature.r_b8.x);
+    let s_ry = cast::fq_to_dec_string(&signature.r_b8.y);
+    let s_s = cast::fr_to_dec_string(&signature.s);
+    let signature_json = format!(r#"{{"rx":{}, "ry":{}, "s":{}}}"#, s_rx, s_ry, s_s);
+    
+    // Open the file in write mode, creating it if it doesn't exist
+    let mut file = File::create(filename_with_path.clone()).expect("Unable to write file");
+
+    // Write the first string followed by a newline character
+    file.write_all(certificate.as_bytes()).expect("Unable to write file");
+    file.write_all(b"\n").expect("Unable to write file");
+    file.write_all(signature_json.as_bytes()).expect("Unable to write file");
 
     filename_with_path
 
