@@ -181,6 +181,7 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
     file.write_all(certificate.as_bytes()).expect("Unable to write file");
     file.write_all(b"\n").expect("Unable to write file");
     file.write_all(signature_json.as_bytes()).expect("Unable to write file");
+    file.write_all(b"\n").expect("Unable to write file");
 
     filename_with_path
 
