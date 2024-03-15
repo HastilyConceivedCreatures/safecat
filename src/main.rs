@@ -55,9 +55,7 @@ fn main() {
             io_utils::show_certs("certs/created").expect("Error showing certificates");
         },
         Some((_, _)) => {
-            let my_str = include_str!("safecat.txt");
-            print!("{my_str}");
-            println!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
+            println!("unknown command, For more information, try '--help'.")
         },   
         None => todo!()
         }
@@ -65,11 +63,13 @@ fn main() {
 
 // CLI configuration function
 fn cli() -> Command {
+    let safacat_ascii = include_str!("safecat.txt");
+
     // Create the top-level 'safecat' command
     Command::new("safecat")
+        .about(safacat_ascii)
         .subcommand_required(true) // Specify that a subcommand is required
         .arg_required_else_help(true) // Ensure that at least one argument is required, or display help
-        .allow_external_subcommands(true) // Allow external subcommands to be executed
         .subcommand(
             Command::new("generate")
                 .about("Generates a private key") 
