@@ -65,34 +65,6 @@ pub fn print_u8_array(arr: &[u8], format: &str) {
     }
 }
 
-pub fn bad_command(command: &str) {
-    match command {
-        "general" => {
-            let my_str = include_str!("safecat.txt");
-            print!("{my_str}");
-
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-        "generate" =>    
-            println!("Usage: 'safecat generate' with no extra parameters"),
-        "show" =>    
-            println!("Usage: 'safecat show [--format hex|detailed=default]'"),
-        "sign" =>
-            println!("Usage: 'safecat sign [--hash sha256|poseidon=default] [--format hex|detailed=default] <message_to_sign>'"),
-        "verify" =>
-            println!("Usage: 'safecat verify [--hash sha256|poseidon=default] <message_to_verify> <signature> <public_key>'"),
-        "message_too_long" =>
-            println!("Message too long! The maximum message lengt with Poseidon hash is 16 characters"),
-        _ => {
-            println!("Usage: safecat <generate|show|sign|verify> [--hash sha256|poseidon=default] [--format hex|detailed=default] [parameters]");
-            println!("Ex., 'safecat sign --hash poseidon --format hex 'hello world'");
-            },
-    }
-
-    std::process::exit(1);
-}
-
 // splits a 128 hex string into two 64 strings
 pub fn split_hex_string(input: &str) -> (String, String) {
     // Check if the input string has a length of 128 characters

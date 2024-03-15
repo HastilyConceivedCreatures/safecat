@@ -55,6 +55,8 @@ fn main() {
             io_utils::show_certs("certs/created").expect("Error showing certificates");
         },
         Some((_, _)) => {
+            let my_str = include_str!("safecat.txt");
+            print!("{my_str}");
             println!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
         },   
         None => todo!()
@@ -233,10 +235,14 @@ fn verify_signature(message_to_verify_string: String, signature_string: String, 
     println!("public_key_hex_string: {}", public_key_hex_string);
     println!("signature_string: {}", signature_string);
 
+    // calculate max message length for Poesidon hash
+    const MAX_POSEIDON_MESSAGE_LEN : usize = consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
+
     if  hash_algorithm == "poseidon" &&
-        message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
+        message_to_verify_string.len() > MAX_POSEIDON_MESSAGE_LEN
     {
-        io_utils::bad_command("message_too_long");
+        println!("Message too long! Maximum message length with Poseidon  is {} characters", MAX_POSEIDON_MESSAGE_LEN);
+        std::process::exit(1);
     }
 
     let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
@@ -330,18 +336,19 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&hashed_sha256_message_string).unwrap();
-    } else {
-        io_utils::bad_command("general");
     }
 
     hash_fq
 }
 
 fn sign_message(message_to_sign_string: String, hash_algorithm: String) -> Result<(Signature, Fq), &'static str> {
+    // calculate max message length for Poesidon hash
+    const MAX_POSEIDON_MESSAGE_LEN : usize = consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
+
     if hash_algorithm == "poseidon"
-        && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
+        && message_to_sign_string.len() > MAX_POSEIDON_MESSAGE_LEN
     {
-        return Err("message_too_long");
+        println!("Message too long! Maximum message length with Poseidon  is {} characters", MAX_POSEIDON_MESSAGE_LEN);
     }
 
     // Check if private key file exists
