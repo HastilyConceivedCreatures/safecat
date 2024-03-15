@@ -51,6 +51,9 @@ fn main() {
             let birth = *sub_matches.get_one("BIRTH").expect("required");
             assert(public_key, cert_type, expiration, birth, "poseidon".to_string());
         },
+        Some(("show-certs", sub_matches)) => {
+            io_utils::show_certs("certs/created").expect("Error showing certificates");
+        },
         Some((_, _)) => {
             println!("unknown command, usage 'safecat <generate|show-keys|sign|verify|assert>'")
         },   

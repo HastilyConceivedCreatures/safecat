@@ -3,7 +3,7 @@
 
 use babyjubjub_ark::{PrivateKey, Signature};
 use std::io::{self, Read, Write};
-use std::fs::File;
+use std::{fs, fs::File};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::cast; // module for casting between types
@@ -192,4 +192,19 @@ pub fn file_exists(folder: &str, filename: &str) -> bool {
     let current_dir = std::env::current_dir().unwrap();
     let file_path = current_dir.join(folder).join(filename);
     file_path.exists()
+}
+
+// print certificates in a folder
+pub fn show_certs(folder_path: &str) -> Result<(), std::io::Error> {
+    // Get list of files in the specified folder
+    let file_paths = fs::read_dir(folder_path)?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
+
+    println!("file_paths: {:?}", file_paths);
+
+    println!("{: <8} {: <8} {: <8} {}", "Index", "rx", "ry", "Type");
+    println!("{}", "-".repeat(33));
+
+    Ok(())
 }
