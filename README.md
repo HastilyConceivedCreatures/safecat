@@ -42,6 +42,12 @@ Install Rust, and run `cargo build`.
 - `<certification type>` is an integer,
 - `<expiration date>` and `<birth date>` are linux timestamps.
 
+    Example usage:
+
+  ```
+  safecat assert 1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a 1 1713109860 892569062
+  ```
+
     At this stage, the certificate format is aimed towards proof of humanity and age. We will extend it later for more general certificates.
 
     Certificates are saved in `certs/created` folder.
