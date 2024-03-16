@@ -137,7 +137,7 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
 
     if !path_exists {
         // If the folder doesn't exist, create it
-        fs::create_dir(path).expect("Can't create folder");
+        fs::create_dir_all(path).expect("Can't create folder");
         println!("Folder '{}' created successfully.", path);
     }
 
