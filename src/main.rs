@@ -52,7 +52,15 @@ fn main() {
             assert(public_key, cert_type, expiration, birth, "poseidon".to_string());
         },
         Some(("show-certs", sub_matches)) => {
-            io_utils::show_certs("certs/created").expect("Error showing certificates");
+            let certificates_folder = sub_matches.get_one::<String>("CERTIFICATES_FOLDER").expect("required").to_string();
+
+            let certificates_folder_path;
+            if certificates_folder == "created" {
+                certificates_folder_path = "certs/created"; 
+            }  else {
+                certificates_folder_path = "certs/received"
+            }
+            io_utils::show_certs(certificates_folder_path).expect("Error showing certificates");
         },
         Some((_, _)) => {
             println!("unknown command, For more information, try '--help'.")
@@ -142,6 +150,15 @@ fn cli() -> Command {
                 .arg(arg!(<BIRTH> "birth date")
                      .require_equals(true)
                      .value_parser(clap::value_parser!(u64))
+                )
+        )
+        .subcommand(
+            Command::new("show-certs")
+                .about("Show existing certificates")
+                .arg_required_else_help(true)
+                .arg(arg!(<CERTIFICATES_FOLDER> "certificates folder")
+                     .value_parser(["created", "received"])
+                     .require_equals(true)
                 )
         )
 }
@@ -274,8 +291,8 @@ fn assert(
     io_utils::verify_timestamp(birthdate, true);
 
     // json of each certificate component
-    let public_key_x_json   = format!(r#""x":{}"#, pubic_key_x_str);
-    let public_key_y_json   = format!(r#""y":{}"#, pubic_key_y_str);
+    let public_key_x_json   = format!(r#""x":"{}""#, pubic_key_x_str);
+    let public_key_y_json   = format!(r#""y":"{}""#, pubic_key_y_str);
     let cert_type_json      = format!(r#""type":{}"#, cert_type);
     let bdate_json          = format!(r#""expdate":{}"#, birthdate);
     let expdate_json        = format!(r#""bdate":{}"#, expiration_date);

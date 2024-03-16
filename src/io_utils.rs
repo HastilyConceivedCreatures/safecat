@@ -2,9 +2,10 @@
    saving, loading, and printing */
 
 use babyjubjub_ark::{PrivateKey, Signature};
-use std::io::{self, Read, Write};
+use std::io::{self, Read, Write, BufRead, BufReader};
 use std::{fs, fs::File};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::Path;
 
 use crate::cast; // module for casting between types
 
@@ -128,12 +129,23 @@ pub fn verify_timestamp(timestamp: u64, past: bool) {
 
 // saves a certificate
 pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signature) -> String  {
+    // certificates folder
+    let path = "certs/created";
+
+    // Check if the folder exists
+    let path_exists = fs::metadata(path).is_ok();
+
+    if !path_exists {
+        // If the folder doesn't exist, create it
+        fs::create_dir(path).expect("Can't create folder");
+        println!("Folder '{}' created successfully.", path);
+    }
 
     // if filename exists, add  suffix to it such as "filename-1"
     let mut filename_index = 1;
     let mut filename = base_filename.to_string();
 
-    while file_exists("certs/created", &filename) {
+    while file_exists(path, &filename) {
         filename = format!("{}-{}", base_filename, filename_index); 
         filename_index += 1;
     }
@@ -144,7 +156,7 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
     let s_rx = cast::fq_to_dec_string(&signature.r_b8.x);
     let s_ry = cast::fq_to_dec_string(&signature.r_b8.y);
     let s_s = cast::fr_to_dec_string(&signature.s);
-    let signature_json = format!(r#"{{"rx":{}, "ry":{}, "s":{}}}"#, s_rx, s_ry, s_s);
+    let signature_json = format!(r#"{{"rx":"{}", "ry":"{}", "s":{}}}"#, s_rx, s_ry, s_s);
     
     // Open the file in write mode, creating it if it doesn't exist
     let mut file = File::create(filename_with_path.clone()).expect("Unable to write file");
@@ -168,15 +180,68 @@ pub fn file_exists(folder: &str, filename: &str) -> bool {
 
 // print certificates in a folder
 pub fn show_certs(folder_path: &str) -> Result<(), std::io::Error> {
+    // Check if the folder exists
+    if !Path::new(folder_path).exists() {
+        println!("Folder '{}' doesn't exist.", folder_path);
+        return Ok(());
+    }
+
     // Get list of files in the specified folder
     let file_paths = fs::read_dir(folder_path)?
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    println!("file_paths: {:?}", file_paths);
+    println!("{: <8} {: <14} {: <14} {}", "Index", "rx", "ry", "Type");
+    println!("{}", "-".repeat(45));
 
-    println!("{: <8} {: <8} {: <8} {}", "Index", "rx", "ry", "Type");
-    println!("{}", "-".repeat(33));
+    for (index, file_path) in file_paths.iter().enumerate() {
+        let rx;
+        let ry;
+        let cert_type;
+
+        // Open the file
+        let file = File::open(&file_path)?;
+        let mut reader = BufReader::new(file);
+
+        // Read first line (JSON containing "type")
+        let mut line = String::new();
+        reader.read_line(&mut line)?;
+        let json_type: serde_json::Value = serde_json::from_str(&line)?;
+
+        // Read second line (JSON containing "rx" and "ry")
+        line.clear();
+        reader.read_line(&mut line)?;
+        let json_rx_ry: serde_json::Value = serde_json::from_str(&line)?;
+
+        // Extract required fields
+        if let (Some(type_val), Some(rx_val), Some(ry_val)) = (
+            json_type.get("type"),
+            json_rx_ry.get("rx"),
+            json_rx_ry.get("ry"),
+        ) {
+            cert_type = type_val.as_u64().unwrap_or_default();
+            rx = rx_val
+                .as_str()
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid rx value"))?;
+            ry = ry_val
+                .as_str()
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid ry value"))?;
+        } else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid JSON format",
+            ));
+        }
+
+        // Print file info
+        println!(
+            "{: <8} {: <14} {: <14} {}",
+            index + 1,
+            &rx[0..12],
+            &ry[0..12],
+            cert_type
+        );
+    }
 
     Ok(())
 }
