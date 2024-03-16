@@ -5,6 +5,8 @@ A simple CLI tool to generate, sign, and verify digital signatures using EdDSA *
 
 See [the announcement article](http://neimanslab.org/2024-02-19/safecat.html) for more details.
 
+**Experimental WIP**: Additionally, Safecat contains a feature, `safecat assert`, for creating signed certificates that can be used in Noir proofs.
+
 ## compile
 Install Rust, and run `cargo build`.
 
@@ -13,15 +15,15 @@ Install Rust, and run `cargo build`.
 
     The private key is saved in a file `priv.key`, which is not encrypted! Unsafe indeed.
 
-2. `safecat show`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. You need "detailed" if you want to verify the signature in Noir, and "hex" if you verify with safecat.
+2. `safecat show-keys`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. You need "detailed" if you want to verify the signature in Noir, and "hex" if you verify with safecat.
 
     Here's how you show the detailed format:
     ```
-    safecat show --format detailed
+    safecat show-keys --format detailed
     ```
     and here's how you show the hex format:
     ```
-    safecat show --format hex
+    safecat show-keys --format hex
     ```
 
 3. `safecat sign "message"`. Signs a message using the last generated private-public key. By default, the message is hashed using the Poseidon hash function, but you can change it to SHA-256 using the --hash option. You can also choose a format as before.
@@ -35,6 +37,16 @@ Install Rust, and run `cargo build`.
     ```
     safecat verify "hello world" 245a157dc8e23ea8a0ab41b1c2d95ee7d59db5b76cba54b6f10630e5e0aefbdd140996400320386a9a2ec4b06ea7d1c885cd311751445ea171af1ab64dba5ace0420d34429497da49443ae35deb8e3daa745dc0e776df3703640078a67982cad 12055e5d761fd705d1f234770fc55b2cfdfd91e741d8f43b2a88cb5a88f9c1c01061ca2f21151da2903e7ccdf11dbda65c20851dd1df4ac522431041ea1738f9
     ```
+5. `safecat assert <public key> <cetification type> <expiration date> <birth date>`, where:
+- `<public key>` is in hex format, e.g, '1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a',
+- `<certification type>` is an integer,
+- `<expiration date>` and `<birth date>` are linux timestamps.
+
+    At this stage, the certificate format is aimed towards proof of humanity and age. We will extend it later for more general certificates.
+
+    Certificates are saved in `certs/created` folder.
+
+6. `safecat show-certs <created|received>`. Show the certificates created or received by the user, which are located in the folder `certs/created` or `certs/received` correspondingly.
 
 ## Limitations
 Poseidon hash is limited to strings of 496 characters.
