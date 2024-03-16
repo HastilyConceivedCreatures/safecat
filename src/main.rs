@@ -3,7 +3,7 @@ mod io_utils;
 mod consts;
 
 use ark_std::str::FromStr;
-use babyjubjub_ark::{new_key, verify, Fq};
+use babyjubjub_ark::{new_key, verify, Fq, Signature};
 use ff_ce::PrimeField;
 use poseidon_rs::{Fr as FrPoseidon, Poseidon};
 use std::fs::{self};
@@ -19,9 +19,9 @@ fn main() {
         Some(("generate", _)) => {
             generate("priv.key")
         },
-        Some(("show", sub_matches)) => {
+        Some(("show-keys", sub_matches)) => {
             let format = sub_matches.get_one::<String>("format").expect("defaulted in clap");
-            show(format.to_string())
+            show_keys(format.to_string())
         },
         Some(("sign", sub_matches)) => {
             let msg = sub_matches.get_one::<String>("MESSAGE").expect("required");
@@ -44,8 +44,26 @@ fn main() {
             );
             verify_signature(msg, signature, private_key, hash)
         },
+        Some(("assert", sub_matches)) => {
+            let public_key = sub_matches.get_one::<String>("PUBLICKEY").expect("required").to_string();
+            let cert_type = *sub_matches.get_one("TYPE").expect("required");
+            let expiration = *sub_matches.get_one("EXPIRATION").expect("required");
+            let birth = *sub_matches.get_one("BIRTH").expect("required");
+            assert(public_key, cert_type, expiration, birth, "poseidon".to_string());
+        },
+        Some(("show-certs", sub_matches)) => {
+            let certificates_folder = sub_matches.get_one::<String>("CERTIFICATES_FOLDER").expect("required").to_string();
+
+            let certificates_folder_path;
+            if certificates_folder == "created" {
+                certificates_folder_path = "certs/created"; 
+            }  else {
+                certificates_folder_path = "certs/received"
+            }
+            io_utils::show_certs(certificates_folder_path).expect("Error showing certificates");
+        },
         Some((_, _)) => {
-            print!("unknown command, usage 'safecat <generate|show|sign|verify>'")
+            println!("unknown command, For more information, try '--help'.")
         },   
         None => todo!()
         }
@@ -53,17 +71,19 @@ fn main() {
 
 // CLI configuration function
 fn cli() -> Command {
+    let safacat_ascii = include_str!("safecat.txt");
+
     // Create the top-level 'safecat' command
     Command::new("safecat")
+        .about(safacat_ascii)
         .subcommand_required(true) // Specify that a subcommand is required
         .arg_required_else_help(true) // Ensure that at least one argument is required, or display help
-        .allow_external_subcommands(true) // Allow external subcommands to be executed
         .subcommand(
             Command::new("generate")
                 .about("Generates a private key") 
         )
         .subcommand(
-            Command::new("show")
+            Command::new("show-keys")
                 .about("Shows keys")
                 .arg(arg!(--"format" <FORMAT>)
                      .value_parser(["detailed", "hex"])
@@ -112,6 +132,35 @@ fn cli() -> Command {
                      .require_equals(true)
                 )
         )
+        .subcommand(
+            Command::new("assert")
+                .about("Creates a certificate for an assertion") 
+                .arg_required_else_help(true)
+                .arg(arg!(<PUBLICKEY> "publick key")
+                     .require_equals(true)
+                )
+                .arg(arg!(<TYPE> "certificate type")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u32))
+                )
+                .arg(arg!(<EXPIRATION> "expiration date")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u64))
+                )
+                .arg(arg!(<BIRTH> "birth date")
+                     .require_equals(true)
+                     .value_parser(clap::value_parser!(u64))
+                )
+        )
+        .subcommand(
+            Command::new("show-certs")
+                .about("Show existing certificates")
+                .arg_required_else_help(true)
+                .arg(arg!(<CERTIFICATES_FOLDER> "certificates folder")
+                     .value_parser(["created", "received"])
+                     .require_equals(true)
+                )
+        )
 }
 
 // Generates a new private key and saves it to file
@@ -129,7 +178,7 @@ fn generate(privatekey_filename: &str) {
 }
 
 // Displays private and public keys based on the specified output format.
-fn show(output_format: String) {
+fn show_keys(output_format: String) {
     // Check if private key file exists
     if !file_exists("priv.key") {
         println!("No key was generated yet.");
@@ -164,67 +213,113 @@ fn show(output_format: String) {
 
 // Signs a message using BabyJubJub based on the specified hash algorithm and output format.
 fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: String) {
-            if hash_algorithm == "poseidon"
-                && message_to_sign_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
-            {
-                io_utils::bad_command("message_too_long");
+    // Sign the message
+    let (signature, hash_fq) =  
+        match sign_message(message_to_sign_string, hash_algorithm) {
+            Ok((signature, fq)) => {
+                (signature, fq)
             }
-
-            // Check if private key file exists
-            if !file_exists("priv.key") {
-                println!("No key was generated yet.");
+            Err(err_msg) => {
+                println!("Error: {}", err_msg);
                 return;
             }
+        };
 
-            let private_key = io_utils::load_private_key("priv.key").unwrap();
+        // Print the hash
+    println!("message Hash: {}", cast::fq_to_dec_string(&hash_fq));
 
-            let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
+    if output_format == "detailed" {
+        // Print signature
+        println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.r_b8.x));
+        println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.r_b8.y));
+        println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
+    } else if output_format == "hex" {
+        // change signature variables to hex
+        let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
+        let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
+        let signature_s_hex = cast::fr_to_hex_string(&signature.s);
 
-            // Print the hash
-            println!("message Hash: {}", cast::fq_to_dec_string(&hash_fq));
-
-            // Sign the message
-            let signature = private_key.sign(hash_fq).expect("Failed to sign message");
-
-            if output_format == "detailed" {
-                // Print signature
-                println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.r_b8.x));
-                println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.r_b8.y));
-                println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
-            } else if output_format == "hex" {
-                // change signature variables to hex
-                let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
-                let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
-                let signature_s_hex = cast::fr_to_hex_string(&signature.s);
-
-                println!(
-                    "Signature: {}{}{}",
-                    signature_x_hex, signature_y_hex, signature_s_hex
-                );
-            }
+        println!(
+            "Signature: {}{}{}",
+            signature_x_hex, signature_y_hex, signature_s_hex
+        );
+    }
 }
 
 // Verifies a message signature using BabyJubJub based on the specified hash algorithm.
 fn verify_signature(message_to_verify_string: String, signature_string: String, public_key_hex_string: String , hash_algorithm: String) {
-            println!("message_to_verify_string: {}", message_to_verify_string);
-            println!("public_key_hex_string: {}", public_key_hex_string);
-            println!("signature_string: {}", signature_string);
+    println!("message_to_verify_string: {}", message_to_verify_string);
+    println!("public_key_hex_string: {}", public_key_hex_string);
+    println!("signature_string: {}", signature_string);
 
-            if  hash_algorithm == "poseidon" &&
-                message_to_verify_string.len() > consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN
-            {
-                io_utils::bad_command("message_too_long");
+    // calculate max message length for Poesidon hash
+    const MAX_POSEIDON_MESSAGE_LEN : usize = consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
+
+    if  hash_algorithm == "poseidon" &&
+        message_to_verify_string.len() > MAX_POSEIDON_MESSAGE_LEN
+    {
+        println!("Message too long! Maximum message length with Poseidon  is {} characters", MAX_POSEIDON_MESSAGE_LEN);
+        std::process::exit(1);
+    }
+
+    let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
+
+    // Create PublicKey and signature objects
+    let public_key = cast::public_key_from_str(&public_key_hex_string).unwrap();
+    let signature = cast::signature_from_str(&signature_string);
+
+    let correct = verify(public_key, signature, hash_fq);
+
+    println!("signature is {}", correct);
+}
+
+// Creates a certificate
+fn assert(
+    public_key_str: String, 
+    cert_type: u32, 
+    expiration_date: u64, 
+    birthdate: u64, 
+    hash_algorithm: String
+) {
+    // validate public key input and split it into x and y
+    let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&public_key_str);
+
+    // validate expiration date is in the future
+    io_utils::verify_timestamp(expiration_date, false);
+
+    // validate expiration date is in the past
+    io_utils::verify_timestamp(birthdate, true);
+
+    // json of each certificate component
+    let public_key_x_json   = format!(r#""x":"{}""#, pubic_key_x_str);
+    let public_key_y_json   = format!(r#""y":"{}""#, pubic_key_y_str);
+    let cert_type_json      = format!(r#""type":{}"#, cert_type);
+    let bdate_json          = format!(r#""expdate":{}"#, birthdate);
+    let expdate_json        = format!(r#""bdate":{}"#, expiration_date);
+
+
+    // inner part of certificate json
+    let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
+    let cert_json = format!(r#"{{{}}}"#, cert_json_inner);
+
+    // Sign the certificate
+    let (signature, _) =  
+        match sign_message(cert_json.clone(), hash_algorithm) {
+            Ok((signature, fq)) => {
+                (signature, fq)
             }
+            Err(err_msg) => {
+                println!("Error: {}", err_msg);
+                return;
+            }
+        };
 
-            let hash_fq = calculate_hash_fq(&message_to_verify_string, &hash_algorithm);
+    // save certificates to file
+    let base_filename = format!("{}-{}", public_key_str, cert_type);
+    let filename = io_utils::save_certificate(&base_filename, &cert_json, signature);
 
-            // Create PublicKey and signature objects
-            let public_key = cast::public_key_from_str(&public_key_hex_string).unwrap();
-            let signature = cast::signature_from_str(&signature_string);
+    println!("The certificate was saved to file: {}", filename);
 
-            let correct = verify(public_key, signature, hash_fq);
-
-            println!("signature is {}", correct);
 }
 
 // Calculateד hash_fq based on hash_algorithm
@@ -258,11 +353,35 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&hashed_sha256_message_string).unwrap();
-    } else {
-        io_utils::bad_command("general");
     }
 
     hash_fq
+}
+
+fn sign_message(message_to_sign_string: String, hash_algorithm: String) -> Result<(Signature, Fq), &'static str> {
+    // calculate max message length for Poesidon hash
+    const MAX_POSEIDON_MESSAGE_LEN : usize = consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
+
+    if hash_algorithm == "poseidon"
+        && message_to_sign_string.len() > MAX_POSEIDON_MESSAGE_LEN
+    {
+        println!("Message too long! Maximum message length with Poseidon  is {} characters", MAX_POSEIDON_MESSAGE_LEN);
+    }
+
+    // Check if private key file exists
+    if !file_exists("priv.key") {
+        return Err("No key was generated yet.");
+    }
+
+    let private_key = io_utils::load_private_key("priv.key").unwrap();
+    let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
+
+    // Sign the message
+    let signature: Signature = private_key
+        .sign(hash_fq)
+        .map_err(|_| "Failed to sign message")?;
+
+    Ok((signature, hash_fq))
 }
 
 // Checks if the file at the specified path exists
