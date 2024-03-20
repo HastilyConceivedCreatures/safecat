@@ -136,7 +136,7 @@ fn cli() -> Command {
             Command::new("assert")
                 .about("Creates a certificate for an assertion") 
                 .arg_required_else_help(true)
-                .arg(arg!(<PUBLICKEY> "publick key")
+                .arg(arg!(<PUBLICKEY> "public key")
                      .require_equals(true)
                 )
                 .arg(arg!(<TYPE> "certificate type")
