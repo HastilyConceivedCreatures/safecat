@@ -1,7 +1,10 @@
+/* Example library for using Poseidon hash on strings of length < 496 */
+
 mod data_processing;
 
 use data_processing::bytes_to_fields;
 
+// convers a message to an array of Field
 pub fn message_to_fields<N,M>(msg: str<N>) -> ([Field; M], u32)
 {
     bytes_to_fields(msg.as_bytes())
