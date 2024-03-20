@@ -1,5 +1,5 @@
 [package]
-name = "safecat example - poseidon hash of a long string"
+name = "safecat example - proving a claim based on certificates"
 type = "lib"
 authors = [""]
 compiler_version = ">=0.23.0"
