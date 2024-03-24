@@ -1,7 +1,7 @@
 [package]
-name = "safecat example - proving a claim based on certificates"
-type = "lib"
+name = "verify_certificates"
+type = "bin"
 authors = [""]
-compiler_version = ">=0.23.0"
+compiler_version = ">=0.25.0"
 
 [dependencies]

@@ -294,12 +294,12 @@ fn assert(
     let public_key_x_json   = format!(r#""x":"{}""#, pubic_key_x_str);
     let public_key_y_json   = format!(r#""y":"{}""#, pubic_key_y_str);
     let cert_type_json      = format!(r#""type":{}"#, cert_type);
-    let bdate_json          = format!(r#""expdate":{}"#, birthdate);
-    let expdate_json        = format!(r#""bdate":{}"#, expiration_date);
+    let expdate_json        = format!(r#""expdate":{}"#, expiration_date);
+    let bdate_json          = format!(r#""bdate":{:0>10}"#, birthdate);
 
 
     // inner part of certificate json
-    let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, bdate_json, expdate_json);
+    let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, expdate_json, bdate_json);
     let cert_json = format!(r#"{{{}}}"#, cert_json_inner);
 
     // Sign the certificate

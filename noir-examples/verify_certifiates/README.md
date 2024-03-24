@@ -62,7 +62,7 @@ We call a set of trusted entities, or at least trusted to issue certain certific
 
 Each entity in the kernel is represented by its private keys. We can make a Merkle tree where the leaves are persons in the trusted set. The roof of this tree represents a trust set.
 
-The trust set of the example is `(da Vinci, Einstein, Newton, Euclid)`. We calculated, using Noir, the Merkle root of `(devinci,newton,Einstein,Euclid)` with Pedersen hash is `0x1b000254eae6e4cb266bc28ee88490b4760b221ab41dbd1f5b064d785c343778`, where the leaves were made left to right.
+The trust set of the example is `(da Vinci, Einstein, Newton, Euclid)`. We calculated, using Noir, the Merkle root of `(devinci,newton,Einstein,Euclid)` with Pedersen hash is `0x0b7ce38eae5d7d171103b2879399856eedfacf71a862c7a89ca80a0f03e3be1c`, where the leaves were made left to right.
 
 ## Noir program
 The Noir program shows that two persons from the trust set verified that Satoshi is a human born on 1-jan-1990.
