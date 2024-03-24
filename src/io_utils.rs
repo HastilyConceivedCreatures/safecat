@@ -156,7 +156,7 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
     let s_rx = cast::fq_to_dec_string(&signature.r_b8.x);
     let s_ry = cast::fq_to_dec_string(&signature.r_b8.y);
     let s_s = cast::fr_to_dec_string(&signature.s);
-    let signature_json = format!(r#"{{"rx":"{}", "ry":"{}", "s":{}}}"#, s_rx, s_ry, s_s);
+    let signature_json = format!(r#"{{"s":"{}", "rx":"{}", "ry":"{}"}}"#, s_s, s_rx, s_ry);
     
     // Open the file in write mode, creating it if it doesn't exist
     let mut file = File::create(filename_with_path.clone()).expect("Unable to write file");

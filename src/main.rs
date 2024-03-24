@@ -297,7 +297,6 @@ fn assert(
     let expdate_json        = format!(r#""expdate":{}"#, expiration_date);
     let bdate_json          = format!(r#""bdate":{:0>10}"#, birthdate);
 
-
     // inner part of certificate json
     let cert_json_inner = format!(r#"{},{},{},{},{}"#, public_key_x_json, public_key_y_json, cert_type_json, expdate_json, bdate_json);
     let cert_json = format!(r#"{{{}}}"#, cert_json_inner);
