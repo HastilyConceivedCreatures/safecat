@@ -24,6 +24,8 @@ pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<
         print!("{:02x?}", num);
     }
 
+    // end the line of the private key
+    write!(file, "\n")?;
     println!("");
 
 
