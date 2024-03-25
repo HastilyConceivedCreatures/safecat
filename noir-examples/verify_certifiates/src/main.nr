@@ -11,7 +11,7 @@ fn main(
     signature: [ [Field; 3]; 2],
     expiration: Field, 
     bdate: Field,
-    trust_kernel_root: Field,
+    trust_kernel_root: pub Field,
     signers_merkle_hash_path : [ [Field; 2]; 2],
     signers_merkle_hash_path_index: [Field; 2],
     current_timestamp: pub Field
