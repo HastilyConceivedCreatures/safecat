@@ -6,16 +6,22 @@ use babyjubjub_ark::{Fq, Fr, Point, Signature};
 use num::{BigInt, Num};
 use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
-use std::io::{self};
 
+use crate::Error;
 
-pub fn public_key_from_str(key_string_hex: &str) -> io::Result<Point> {
+pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
+    // Catch string errors
+    if key_string_hex.len() < 64 {
+        return Err("Invalid public key hex string.".into());
+    }
+
     // Split the hex string into x and y parts
+    // TODO: Replace `split_at` with `split_at_checked`
     let (x_string_hex, y_string_hex) = key_string_hex.split_at(64);
 
     // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16).unwrap();
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16).unwrap();
+    let x_decimal = BigUint::from_str_radix(x_string_hex, 16)?;
+    let y_decimal = BigUint::from_str_radix(y_string_hex, 16)?;
 
     // Convert BigUint to Fq
     let x = Fq::from(x_decimal);
@@ -24,16 +30,21 @@ pub fn public_key_from_str(key_string_hex: &str) -> io::Result<Point> {
     Ok(Point { x, y })
 }
 
+pub fn signature_from_str(signature_string_hex: &str) -> Result<Signature, Error> {
+    // Catch string errors
+    if signature_string_hex.len() < 128 {
+        return Err("Invalid signature hex string.".into());
+    }
 
-pub fn signature_from_str(signature_string_hex: &str) -> Signature {
     // Split the string at indices 64 and 128
+    // TODO: Replace `split_at` with `split_at_checked`
     let (x_string_hex, temp) = signature_string_hex.split_at(64);
     let (y_string_hex, s_string_hex) = temp.split_at(64);
 
     // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16).unwrap();
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16).unwrap();
-    let s_decimal = BigUint::from_str_radix(s_string_hex, 16).unwrap();
+    let x_decimal = BigUint::from_str_radix(x_string_hex, 16)?;
+    let y_decimal = BigUint::from_str_radix(y_string_hex, 16)?;
+    let s_decimal = BigUint::from_str_radix(s_string_hex, 16)?;
 
     // Convert BigUint to Fq
     let x = Fq::from(x_decimal);
@@ -42,7 +53,7 @@ pub fn signature_from_str(signature_string_hex: &str) -> Signature {
 
     let r_b8 = Point { x, y };
 
-    Signature { r_b8, s }
+    Ok(Signature { r_b8, s })
 }
 
 pub fn fq_to_hex_string(num: &Fq) -> String {
@@ -104,7 +115,7 @@ pub fn hash256_as_string(message: &str) -> String {
     hashed_message_string
 }
 
-pub fn hex_to_dec(hex_str: &str) -> String {
+pub fn hex_to_dec(hex_str: &str) -> Result<String, Error> {
     let hex_value = if hex_str.starts_with("0x") {
         &hex_str[2..] // Remove the '0x' prefix
     } else {
@@ -113,30 +124,30 @@ pub fn hex_to_dec(hex_str: &str) -> String {
 
     BigInt::from_str_radix(hex_value, 16)
         .map(|dec_value| dec_value.to_string())
-        .unwrap_or_else(|_| String::from("Invalid hex number"))
+        .map_err(|e| format!("{}: {}", "Invalid hex string.", e).into())
 }
 
 // Converting bytes to fields
 pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
     // Split `bs` into chunks of length PACKED_BYTE_LEN starting from the end
     // of the slice. Done in reverse for technical reasons.
-    let reversed_split_bytes: Vec<Vec<u8>> =
-        bs.iter()
-            .rev() // Iterate in reverse order starting from the last byte
-            .fold(vec![vec![]], |mut byte_chunks: Vec<Vec<u8>>, b| {
-                let n = byte_chunks.len();
+    let reversed_split_bytes: Vec<Vec<u8>> = bs
+        .iter()
+        .rev() // Iterate in reverse order starting from the last byte
+        .fold(vec![vec![]], |mut byte_chunks: Vec<Vec<u8>>, b| {
+            let n = byte_chunks.len();
 
-                // Check if the current byte chunk is full
-                if byte_chunks[n - 1].len() == consts::PACKED_BYTE_LEN {
-                    // ...and if so, start filling a new chunk
-                    byte_chunks.push(vec![*b]);
-                } else {
-                    // ..and if not, add the current byte to the current chunk
-                    byte_chunks[n - 1].push(*b);
-                }
-                
-                byte_chunks
-            });
+            // Check if the current byte chunk is full
+            if byte_chunks[n - 1].len() == consts::PACKED_BYTE_LEN {
+                // ...and if so, start filling a new chunk
+                byte_chunks.push(vec![*b]);
+            } else {
+                // ..and if not, add the current byte to the current chunk
+                byte_chunks[n - 1].push(*b);
+            }
+
+            byte_chunks
+        });
 
     // Appropriately map the chunks in `reversed_split_bytes` to Fq, making sure
     // that the chunks are considered in the right order and the resulting vector is

@@ -1,15 +1,16 @@
-/* Collection of IO functions for 
-   saving, loading, and printing */
+/* Collection of IO functions for
+saving, loading, and printing */
 
 use babyjubjub_ark::{PrivateKey, Signature};
-use std::io::{self, Read, Write, BufRead, BufReader};
-use std::{fs, fs::File};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{fs, fs::File};
 
 use crate::cast; // module for casting between types
+use crate::Error;
 
-pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<()> {
+pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> Result<(), Error> {
     print!("New private_key: ");
 
     // Create file
@@ -28,18 +29,20 @@ pub fn save_private_key(filename: &str, private_key: &PrivateKey) -> io::Result<
     write!(file, "\n")?;
     println!("");
 
-
     // ANSI escape codes for green color
     let green_color_code = "\x1b[32m";
     let reset_color_code = "\x1b[0m";
 
     // Notify after saving the private key into a file
-    println!("Saved the new private key in {}{}{} file", green_color_code, filename, reset_color_code);
+    println!(
+        "Saved the new private key in {}{}{} file",
+        green_color_code, filename, reset_color_code
+    );
 
     Ok(())
 }
 
-pub fn load_private_key(filename: &str) -> io::Result<PrivateKey> {
+pub fn load_private_key(filename: &str) -> Result<PrivateKey, Error> {
     // Read the content of the file into a string
     let mut private_key_hex_string = String::new();
     File::open(filename)?.read_to_string(&mut private_key_hex_string)?;
@@ -48,12 +51,12 @@ pub fn load_private_key(filename: &str) -> io::Result<PrivateKey> {
     let mut numbers: [u8; 32] = [0; 32];
 
     // Parse the hex string into a numbers
-    let key_array = hex::decode(private_key_hex_string.trim()).unwrap();
+    let key_array = hex::decode(private_key_hex_string.trim())?;
     numbers.copy_from_slice(&key_array);
 
     // let numbers_vec = numbers.to_vec();
     let numbers_vec: Vec<u8> = numbers.to_vec();
-    let private_key: PrivateKey = PrivateKey::import(numbers_vec).unwrap();
+    let private_key: PrivateKey = PrivateKey::import(numbers_vec)?;
 
     Ok(private_key)
 }
@@ -91,7 +94,7 @@ pub fn split_hex_string(input: &str) -> (String, String) {
 // Verifies a timestamp relative to the current time, checking if it is within specified
 // time bounds. Takes a timestamp, a boolean indicating if the timestamp is in the past,
 // and prints relevant messages to the console.
-pub fn verify_timestamp(timestamp: u64, past: bool) {
+pub fn verify_timestamp(timestamp: u64, past: bool) -> Result<(), Error> {
     // Constants representing the number of seconds in 100 and 10 years
     let hundred_years_seconds = 3153600000;
     let ten_years_seconds = 315360000;
@@ -100,22 +103,27 @@ pub fn verify_timestamp(timestamp: u64, past: bool) {
     // We work with Duration in order to add timestamps
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Failed to get current time");
+        .map_err(|e| format!("Failed to get current time: {}", e))?;
 
     // Convert the timestamp to a duration since the UNIX epoch
     let timestamp_time = UNIX_EPOCH + std::time::Duration::from_secs(timestamp);
     let timestamp_duration = timestamp_time
         .duration_since(UNIX_EPOCH)
-        .expect("Failed to calculate duration");
+        .map_err(|e| format!("Failed to calculate duration: {}", e))?;
 
     if past {
         // Check if the timestamp is in the future
         if timestamp_duration > current_time {
             println!("{} is a timestamp in the future", timestamp);
             std::process::exit(1);
-        // Check if the timestamp is more than 100 years in the past            
-        } else if current_time - timestamp_duration > std::time::Duration::from_secs(hundred_years_seconds) {
-            println!("{} is a timestamp more than 100 years in the past", timestamp);
+        // Check if the timestamp is more than 100 years in the past
+        } else if current_time - timestamp_duration
+            > std::time::Duration::from_secs(hundred_years_seconds)
+        {
+            println!(
+                "{} is a timestamp more than 100 years in the past",
+                timestamp
+            );
         }
     } else {
         // Check if the timestamp is in the past
@@ -123,14 +131,25 @@ pub fn verify_timestamp(timestamp: u64, past: bool) {
             println!("{} is a timestamp in the past", timestamp);
             std::process::exit(1);
         // Check if the timestamp is more than 10 years in the future
-        } else if timestamp_duration - current_time > std::time::Duration::from_secs(ten_years_seconds) {
-            println!("{} is a timestamp more than 10 years in the future", timestamp);
+        } else if timestamp_duration - current_time
+            > std::time::Duration::from_secs(ten_years_seconds)
+        {
+            println!(
+                "{} is a timestamp more than 10 years in the future",
+                timestamp
+            );
         }
     }
+
+    Ok(())
 }
 
 // saves a certificate
-pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signature) -> String  {
+pub fn save_certificate(
+    base_filename: &str,
+    certificate: &str,
+    signature: Signature,
+) -> Result<String, Error> {
     // certificates folder
     let path = "certs/created";
 
@@ -139,7 +158,7 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
 
     if !path_exists {
         // If the folder doesn't exist, create it
-        fs::create_dir_all(path).expect("Can't create folder");
+        fs::create_dir_all(path).map_err(|e| format!("Can't create folder: {}", e))?;
         println!("Folder '{}' created successfully.", path);
     }
 
@@ -147,8 +166,8 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
     let mut filename_index = 1;
     let mut filename = base_filename.to_string();
 
-    while file_exists(path, &filename) {
-        filename = format!("{}-{}", base_filename, filename_index); 
+    while file_exists(path, &filename)? {
+        filename = format!("{}-{}", base_filename, filename_index);
         filename_index += 1;
     }
 
@@ -159,25 +178,33 @@ pub fn save_certificate(base_filename: &str, certificate: &str, signature: Signa
     let s_ry = cast::fq_to_dec_string(&signature.r_b8.y);
     let s_s = cast::fr_to_dec_string(&signature.s);
     let signature_json = format!(r#"{{"s":"{}", "rx":"{}", "ry":"{}"}}"#, s_s, s_rx, s_ry);
-    
+
     // Open the file in write mode, creating it if it doesn't exist
-    let mut file = File::create(filename_with_path.clone()).expect("Unable to write file");
+    let mut file = File::create(filename_with_path.clone())
+        .map_err(|e| format!("Unable to write file: {}", e))?;
 
     // Write the first string followed by a newline character
-    file.write_all(certificate.as_bytes()).expect("Unable to write file");
-    file.write_all(b"\n").expect("Unable to write file");
-    file.write_all(signature_json.as_bytes()).expect("Unable to write file");
-    file.write_all(b"\n").expect("Unable to write file");
+    [
+        certificate.as_bytes(),
+        b"\n",
+        signature_json.as_bytes(),
+        b"\n",
+    ]
+    .into_iter()
+    .map(|bytes| {
+        file.write_all(bytes)
+            .map_err(|e| format!("Unable to write file: {}", e).into())
+    })
+    .collect::<Result<Vec<()>, Error>>()?;
 
-    filename_with_path
-
+    Ok(filename_with_path)
 }
 
 // checks if "filename" exists in "folder"
-pub fn file_exists(folder: &str, filename: &str) -> bool {
-    let current_dir = std::env::current_dir().unwrap();
+pub fn file_exists(folder: &str, filename: &str) -> Result<bool, Error> {
+    let current_dir = std::env::current_dir()?;
     let file_path = current_dir.join(folder).join(filename);
-    file_path.exists()
+    Ok(file_path.exists())
 }
 
 // print certificates in a folder
@@ -222,12 +249,12 @@ pub fn show_certs(folder_path: &str) -> Result<(), std::io::Error> {
             json_rx_ry.get("ry"),
         ) {
             cert_type = type_val.as_u64().unwrap_or_default();
-            rx = rx_val
-                .as_str()
-                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid rx value"))?;
-            ry = ry_val
-                .as_str()
-                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid ry value"))?;
+            rx = rx_val.as_str().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid rx value")
+            })?;
+            ry = ry_val.as_str().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid ry value")
+            })?;
         } else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
