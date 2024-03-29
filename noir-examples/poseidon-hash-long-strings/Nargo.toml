@@ -1,5 +1,6 @@
 [package]
-name = "safecat example - poseidon hash of a long string"
+name = "safecat_example_poseidon"
+description = "Poseidon hash of a long string"
 type = "lib"
 authors = [""]
 compiler_version = ">=0.23.0"

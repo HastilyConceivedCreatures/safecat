@@ -58,7 +58,7 @@ Install Rust, and run `cargo build`.
 There are two examples of integrating Safecat with Noir (tested with V0.25.0).
 
 1. [Poseidon hash of a long string](noir-examples/poseidon-hash-long-strings/). Creating a Poseidon hash of long strings in Noir that corresponds to Poseidon hashes created with Safecat.
-2. [Verify certificates](noir-examples/verify_certifiates/). Verifying with Noir certificates built by Safecat. This is a big elaborated example.
+2. [Verify certificates](noir-examples/verify_certificates/). Verifying with Noir certificates built by Safecat. This is a big elaborated example.
 
 ## Limitations
 Poseidon hash is limited to strings of 496 characters.
