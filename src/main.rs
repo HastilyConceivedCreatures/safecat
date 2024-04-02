@@ -6,6 +6,7 @@ use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Signature};
 use ff_ce::PrimeField;
 use poseidon_rs::{Fr as FrPoseidon, Poseidon};
+use poseidon_ark::{Poseidon as PoseidonArk};
 use std::fs::{self};
 
 use clap::{arg, Command}; // Command Line Argument Parser
@@ -64,12 +65,17 @@ fn main() -> Result<(), Error> {
             let cert_type = *sub_matches.get_one("TYPE").expect("required");
             let expiration = *sub_matches.get_one("EXPIRATION").expect("required");
             let birth = *sub_matches.get_one("BIRTH").expect("required");
+            let format = sub_matches
+                .get_one::<String>("format")
+                .expect("defaulted in clap")
+                .to_string();
             assert(
                 public_key,
                 cert_type,
                 expiration,
                 birth,
                 "poseidon".to_string(),
+                format,
             )?;
         }
         Some(("show-certs", sub_matches)) => {
@@ -169,6 +175,13 @@ fn cli() -> Command {
                     arg!(<BIRTH> "birth date")
                         .require_equals(true)
                         .value_parser(clap::value_parser!(u64)),
+                )
+                .arg(
+                    arg!(--"format" <FORMAT>)
+                        .value_parser(["json", "field"])
+                        .require_equals(false)
+                        .default_missing_value("json")
+                        .default_value("json"),
                 ),
         )
         .subcommand(
@@ -241,7 +254,7 @@ fn show_keys(output_format: String) -> Result<(), Error> {
 // Signs a message using BabyJubJub based on the specified hash algorithm and output format.
 fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: String) {
     // Sign the message
-    let (signature, hash_fq) = match sign_message(message_to_sign_string, hash_algorithm) {
+    let (signature, hash_fq) = match sign_message_string(message_to_sign_string, hash_algorithm) {
         Ok((signature, fq)) => (signature, fq),
         Err(err_msg) => {
             println!("Error: {}", err_msg);
@@ -319,6 +332,7 @@ fn assert(
     expiration_date: u64,
     birthdate: u64,
     hash_algorithm: String,
+    format: String,
 ) -> Result<(), Error> {
     // validate public key input and split it into x and y
     let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&public_key_str);
@@ -343,11 +357,31 @@ fn assert(
     );
     let cert_json = format!(r#"{{{}}}"#, cert_json_inner);
 
-    // Sign the certificate
-    let (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
-        Ok((signature, fq)) => Ok((signature, fq)),
-        Err(err) => Err(err),
-    }?;
+    let signature : Signature;
+
+    if format == "field" {
+        let public_key_x_dec = cast::hex_to_dec(pubic_key_x_str)?;
+        let public_key_y_dec = cast::hex_to_dec(pubic_key_y_str)?;
+        let public_key_x_fq = Fq::from_str(&*public_key_x_dec).unwrap();
+        let public_key_y_fq = Fq::from_str(&*public_key_y_dec).unwrap();
+
+        let expiration_date_fq = Fq::from(expiration_date);
+        let cert_type_fq = Fq::from(cert_type);
+        let birthdate_fq = Fq::from(birthdate);
+
+        let cert_field_vec = vec![public_key_x_fq, public_key_y_fq, expiration_date_fq, cert_type_fq, birthdate_fq];
+
+        let poseidon_ark = PoseidonArk::new();
+        let hash_fq = poseidon_ark.hash(cert_field_vec)?;
+
+        signature = sign_message(hash_fq)?;
+    } else {
+        // Sign the certificate
+        (signature, _) = match sign_message_string(cert_json.clone(), hash_algorithm) {
+            Ok((signature, fq)) => Ok((signature, fq)),
+            Err(err) => Err(err),
+        }?;
+    }
 
     // save certificates to file
     let base_filename = format!("{}-{}", public_key_str, cert_type);
@@ -358,7 +392,7 @@ fn assert(
     Ok(())
 }
 
-// Calculateד hash_fq based on hash_algorithm
+// Calculate hash_fq based on hash_algorithm
 fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq {
     let mut hash_fq = Fq::from_str("0").unwrap();
 
@@ -379,7 +413,7 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 
         // turn into a string
         let mut poseidon_hash_str = poseidon_hash.into_repr().to_string();
-        poseidon_hash_str = cast::hex_to_dec(&poseidon_hash_str).unwrap();
+        poseidon_hash_str = cast::hex_to_dec(poseidon_hash_str).unwrap();
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&poseidon_hash_str).unwrap();
@@ -394,11 +428,11 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
     hash_fq
 }
 
-fn sign_message(
+fn sign_message_string(
     message_to_sign_string: String,
     hash_algorithm: String,
 ) -> Result<(Signature, Fq), Error> {
-    // calculate max message length for Poesidon hash
+    // calculate max message length for Poseidon hash
     const MAX_POSEIDON_MESSAGE_LEN: usize =
         consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
 
@@ -409,13 +443,14 @@ fn sign_message(
         );
     }
 
+    let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
+
     // Check if private key file exists
     if !file_exists("priv.key") {
         return Err("No key has been generated yet.".into());
     }
 
     let private_key = io_utils::load_private_key("priv.key")?;
-    let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
 
     // Sign the message
     let signature: Signature = private_key
@@ -423,6 +458,24 @@ fn sign_message(
         .map_err(|e| format!("Failed to sign message: {}", e))?;
 
     Ok((signature, hash_fq))
+}
+
+fn sign_message(
+    hash_fq: Fq
+) -> Result<Signature, Error> {
+    // Check if private key file exists
+    if !file_exists("priv.key") {
+        return Err("No key has been generated yet.".into());
+    }
+
+    let private_key = io_utils::load_private_key("priv.key")?;
+
+    // Sign the message
+    let signature: Signature = private_key
+        .sign(hash_fq)
+        .map_err(|e| format!("Failed to sign message: {}", e))?;
+
+    Ok(signature)
 }
 
 // Checks if the file at the specified path exists
@@ -436,26 +489,20 @@ fn byte_packing_test() -> Result<(), Error> {
     // Test case 1: Single field from 3 bytes
     let bytes: &[u8] = &[0x01, 0x02, 0x03];
     let fields = cast::bytes_to_fields(bytes);
-    assert!(fields.len() == 1);
-    assert!(fields[0] == Fq::from_str(&cast::hex_to_dec("0x010203").unwrap()).unwrap());
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0], Fq::from_str(&cast::hex_to_dec("0x010203").unwrap()).unwrap());
 
     // Test case 2: Multiple fields from 64 bytes
     let bytes: Vec<u8> = (0..64).collect();
     let fields = cast::bytes_to_fields(&bytes);
-    assert!(fields.len() == 3);
-    assert!(Ok(fields[0]) == Fq::from_str(&cast::hex_to_dec("0x0001")?));
-    assert!(
-        Ok(fields[1])
-            == Fq::from_str(&cast::hex_to_dec(
-                "0x02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
-            )?)
-    );
-    assert!(
-        Ok(fields[2])
-            == Fq::from_str(&cast::hex_to_dec(
-                "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
-            )?)
-    );
+    assert_eq!(fields.len(), 3);
+    assert_eq!(Ok(fields[0]), Fq::from_str(&cast::hex_to_dec("0x0001")?));
+    assert_eq!(Ok(fields[1]), Fq::from_str(&cast::hex_to_dec(
+        "0x02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+    )?));
+    assert_eq!(Ok(fields[2]), Fq::from_str(&cast::hex_to_dec(
+        "0x2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+    )?));
     Ok(())
 }
 
@@ -464,11 +511,8 @@ fn byte_packing_test() -> Result<(), Error> {
 fn test_poseidon_hash() -> Result<(), Error> {
     let msg = "This is a run-through of the Poseidon permutation function.";
     let hash = calculate_hash_fq(msg, "poseidon");
-    assert!(
-        Ok(hash)
-            == Fq::from_str(&cast::hex_to_dec(
-                "0x0b5de89054f5ff651f919eb397f4a125e9ba2aebd175dd809fe8fd02569d8087"
-            )?)
-    );
+    assert_eq!(Ok(hash), Fq::from_str(&cast::hex_to_dec(
+        "0x0b5de89054f5ff651f919eb397f4a125e9ba2aebd175dd809fe8fd02569d8087"
+    )?));
     Ok(())
 }

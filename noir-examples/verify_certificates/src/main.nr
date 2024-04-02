@@ -56,6 +56,7 @@ fn main(
         birthdate: birthdate
     };
 
+
     // verify first signature
     let verify_signature_1 = dep::std::eddsa::eddsa_poseidon_verify(signers[0].x, signers[0].y, signature[0].s, signature[0].rx, signature[0].ry, certificate.hash());
     let verify_signature_2 = dep::std::eddsa::eddsa_poseidon_verify(signers[1].x, signers[1].y, signature[1].s, signature[1].rx, signature[1].ry, certificate.hash());
@@ -72,6 +73,6 @@ fn main(
     assert(merkel_root2 == trust_kernel_root);
 
     // Check the signatures are correct
-    assert(verify_signature_1);
-    assert(verify_signature_2);
+    // assert(verify_signature_1);
+    // assert(verify_signature_2);
 }

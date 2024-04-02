@@ -115,11 +115,11 @@ pub fn hash256_as_string(message: &str) -> String {
     hashed_message_string
 }
 
-pub fn hex_to_dec(hex_str: &str) -> Result<String, Error> {
+pub fn hex_to_dec(hex_str: String) -> Result<String, Error> {
     let hex_value = if hex_str.starts_with("0x") {
         &hex_str[2..] // Remove the '0x' prefix
     } else {
-        hex_str
+        &*hex_str
     };
 
     BigInt::from_str_radix(hex_value, 16)
