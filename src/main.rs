@@ -7,8 +7,6 @@ use babyjubjub_ark::{new_key, verify, Fq, Signature};
 use ff_ce::PrimeField;
 use poseidon_rs::{Fr as FrPoseidon, Poseidon};
 use poseidon_ark::{Poseidon as PoseidonArk};
-use std::fs::{self};
-
 use clap::{arg, Command}; // Command Line Argument Parser
 
 pub(crate) type Error = Box<dyn std::error::Error>;
@@ -104,11 +102,11 @@ fn main() -> Result<(), Error> {
 
 // CLI configuration function
 fn cli() -> Command {
-    let safacat_ascii = include_str!("safecat.txt");
+    let safecat_ascii = include_str!("safecat.txt");
 
     // Create the top-level 'safecat' command
     Command::new("safecat")
-        .about(safacat_ascii)
+        .about(safecat_ascii)
         .subcommand_required(true) // Specify that a subcommand is required
         .arg_required_else_help(true) // Ensure that at least one argument is required, or display help
         .subcommand(Command::new("generate").about("Generates a private key"))
@@ -213,7 +211,7 @@ fn generate(privatekey_filename: &str) -> Result<(), Error> {
 // Displays private and public keys based on the specified output format.
 fn show_keys(output_format: String) -> Result<(), Error> {
     // Check if private key file exists
-    if !file_exists("priv.key") {
+    if !io_utils::file_exists("","priv.key")? {
         return Err("No key has been generated yet.".into());
     }
 
@@ -254,7 +252,7 @@ fn show_keys(output_format: String) -> Result<(), Error> {
 // Signs a message using BabyJubJub based on the specified hash algorithm and output format.
 fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: String) {
     // Sign the message
-    let (signature, hash_fq) = match sign_message_string(message_to_sign_string, hash_algorithm) {
+    let (signature, hash_fq) = match sign_message(message_to_sign_string, hash_algorithm) {
         Ok((signature, fq)) => (signature, fq),
         Err(err_msg) => {
             println!("Error: {}", err_msg);
@@ -374,10 +372,10 @@ fn assert(
         let poseidon_ark = PoseidonArk::new();
         let hash_fq = poseidon_ark.hash(cert_field_vec)?;
 
-        signature = sign_message(hash_fq)?;
+        signature = sign_hash(hash_fq)?;
     } else {
         // Sign the certificate
-        (signature, _) = match sign_message_string(cert_json.clone(), hash_algorithm) {
+        (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
             Ok((signature, fq)) => Ok((signature, fq)),
             Err(err) => Err(err),
         }?;
@@ -428,7 +426,8 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
     hash_fq
 }
 
-fn sign_message_string(
+// Hashes a message and then signs it. Returns the signature and the hash.
+fn sign_message(
     message_to_sign_string: String,
     hash_algorithm: String,
 ) -> Result<(Signature, Fq), Error> {
@@ -446,7 +445,7 @@ fn sign_message_string(
     let hash_fq = calculate_hash_fq(&message_to_sign_string, &hash_algorithm);
 
     // Check if private key file exists
-    if !file_exists("priv.key") {
+    if !io_utils::file_exists("", "priv.key")? {
         return Err("No key has been generated yet.".into());
     }
 
@@ -460,27 +459,24 @@ fn sign_message_string(
     Ok((signature, hash_fq))
 }
 
-fn sign_message(
+// Signs a hash. Returns the signature.
+fn sign_hash(
     hash_fq: Fq
 ) -> Result<Signature, Error> {
     // Check if private key file exists
-    if !file_exists("priv.key") {
+    if !io_utils::file_exists("","priv.key")? {
         return Err("No key has been generated yet.".into());
     }
 
+    // Load private key from file
     let private_key = io_utils::load_private_key("priv.key")?;
 
-    // Sign the message
+    // Sign the hash
     let signature: Signature = private_key
         .sign(hash_fq)
         .map_err(|e| format!("Failed to sign message: {}", e))?;
 
     Ok(signature)
-}
-
-// Checks if the file at the specified path exists
-fn file_exists(file_path: &str) -> bool {
-    fs::metadata(file_path).is_ok()
 }
 
 /// Test for the byte packing functionality
