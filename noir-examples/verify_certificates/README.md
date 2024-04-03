@@ -48,7 +48,12 @@ The certificate contains five fields. `x` and `y` are the public key of the pers
 
 `type` is something we put so that later on we can have different types of certificates, each having a different format. Right now we put `type` equal `1` for the certificates we make, and assume `1` is a certificate someone is human.
 
-For human certificates we also add a `bdate`, date of birth of the person (also denoted in Unit timestamp), so later we can use Noir proofs to distinguish minors from adults.
+For human certificates, we also add a `bdate`, date of birth of the person (also denoted in Unix timestamp). Later on we can use Noir proofs to distinguish minors from adults.
+
+### Representing certificates as array of Fields
+The certificates themselves are given in JSON format. However, since it's difficult to work with strings in Noir, we chose a different representation of the certificates for the proof. 
+
+For [here](https://github.com/HastilyConceivedCreatures/safecat/blob/examples/verify_certificates/noir-examples/verify_certificates/src/main.nr#L21) for full details.
 
 ### Example certificates
 The example certificates are located in `data/certs/`.

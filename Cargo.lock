@@ -669,6 +669,7 @@ dependencies = [
  "hex",
  "num",
  "num-bigint 0.4.4",
+ "poseidon-ark",
  "poseidon-rs",
  "rand 0.8.5",
  "serde",
