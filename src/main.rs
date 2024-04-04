@@ -358,8 +358,8 @@ fn assert(
     let signature : Signature;
 
     if format == "field" {
-        let public_key_x_dec = cast::hex_to_dec(pubic_key_x_str)?;
-        let public_key_y_dec = cast::hex_to_dec(pubic_key_y_str)?;
+        let public_key_x_dec = cast::hex_to_dec(&pubic_key_x_str)?;
+        let public_key_y_dec = cast::hex_to_dec(&pubic_key_y_str)?;
         let public_key_x_fq = Fq::from_str(&*public_key_x_dec).unwrap();
         let public_key_y_fq = Fq::from_str(&*public_key_y_dec).unwrap();
 
@@ -411,7 +411,7 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 
         // turn into a string
         let mut poseidon_hash_str = poseidon_hash.into_repr().to_string();
-        poseidon_hash_str = cast::hex_to_dec(poseidon_hash_str).unwrap();
+        poseidon_hash_str = cast::hex_to_dec(&poseidon_hash_str).unwrap();
 
         // turn the hash into Fq
         hash_fq = Fq::from_str(&poseidon_hash_str).unwrap();
