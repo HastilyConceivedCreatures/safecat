@@ -55,10 +55,10 @@ The certificates themselves are given in JSON format. However, since it's diffic
 
 For [here](https://github.com/HastilyConceivedCreatures/safecat/blob/examples/verify_certificates/noir-examples/verify_certificates/src/main.nr#L21) for full details.
 
-### Example certificates
+### Example Data
 The example certificates are located in `data/certs/`.
 
-There are two certificates. Both of them claim Satoshi is a human born on 1-jan-1990. This is, by the way, not a hint to Satoshi's true identity.
+There are two certificates, one from Einstein and one from Euclid. Both of them claim Satoshi is a human born on 1-jan-1990. This is, by the way, not a hint to Satoshi's true identity.
 
 ## Trust kernel
 Certificates are worthless unless the person reading them trusts whoever signed them. 
