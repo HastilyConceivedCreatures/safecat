@@ -101,7 +101,7 @@ fn main() -> Result<(), Error> {
                         .to_string();
                     actions::attest(
                         id,
-                        1,
+                        2,
                         expiration,
                         birth,
                         "poseidon".to_string(),
