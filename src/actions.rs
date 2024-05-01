@@ -212,7 +212,7 @@ pub fn attest(
 
             let poseidon_ark = PoseidonArk::new();
             let hash_fq = poseidon_ark.hash(cert_field_vec)?;
-
+            
             signature = sign_hash(hash_fq)?;
         } else {
             // Simply sign the JSON certificate

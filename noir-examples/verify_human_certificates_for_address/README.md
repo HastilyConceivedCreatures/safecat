@@ -1,7 +1,10 @@
-# Noir Safecat Example: Poseidon hash of a long string
-*(Adjusted for Safecat v0.0.3)*
+# Noir Safecat Example: verify humanity based on proof of personhood for a blockchain address
+*(Adjusted for Safecat v0.0.4)*
 
 A test integration of Safecat with Noir. It demonstrates how to prove a claim in Noir based on signed certificates created with Safecat.
+
+The claim identifies a person based on their blockchain address. The certificates are create for blockchain address using
+the `/safecat attest birth-address` command.
 
 This is a whimsical example that serves as a proof of concept. It was created manually, but our end goal is to automate its creation with Safecat.
 
@@ -35,30 +38,27 @@ x: 3137991897169707002071061914758136666730155095756285875245158253523334739926
 y: 19525576774514817123938347101881507395524158867013066055259239948343480995092
 ```
 
-**Satoshi** (private key in `data/keys/satoshi.key`):
-```
-x: 8924373613902231840484477317137130032964018132331184975133982612927252489556
-y: 14627334939639963156347001628734192974815272155657246886833616017790624717057
-```
+`**Satoshi** is reporesented as the address ``0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`, which is an address given by Anvil EVM blockchain for testing.
+
 
 ## Example certificates
 Safecat certificates are now in the prototype stage. They contain two lines. The first is the certificate itself, and the second is the signature.
 
-The certificate contains five fields. `x` and `y` are the public key of the person the certificate is issued to. `expdate` is the expiration date of the certificate, denoted in Unix timestamp. 
+The certificate contains four fields. `address` is the blockchain address of the person the certificate is issued to. `expdate` is the expiration date of the certificate, denoted in Unix timestamp. 
 
-`type` is something we put so that later on we can have different types of certificates, each having a different format. Right now we put `type` equal `1` for the certificates we make, and assume `1` is a certificate someone is human.
+`type` is something we put so that later on we can have different types of certificates, each having a different format. Right now we put `type` equal `2` for the certificates in this example, and assume `2` is a certificate someone is human for a blockchain address.
 
 For human certificates, we also add a `bdate`, date of birth of the person (also denoted in Unix timestamp). Later on we can use Noir proofs to distinguish minors from adults.
 
 ### Representing certificates as array of Fields
 The certificates themselves are given in JSON format. However, since it's difficult to work with strings in Noir, we chose a different representation of the certificates for the proof. 
 
-For [here](https://github.com/HastilyConceivedCreatures/safecat/blob/examples/verify_certificates/noir-examples/verify_certificates/src/main.nr#L21) for full details.
-
 ### Example Data
 The example certificates are located in `data/certs/`.
 
 There are two certificates, one from Einstein and one from Euclid. Both of them claim Satoshi is a human born on 1-jan-1990. This is, by the way, not a hint to Satoshi's true identity.
+
+The ceritifacates are created for Satoshi's address.
 
 ## Trust kernel
 Certificates are worthless unless the person reading them trusts whoever signed them. 
