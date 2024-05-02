@@ -5,7 +5,7 @@ A simple CLI tool to generate, sign, and verify digital signatures using EdDSA *
 
 See [the announcement article](http://neimanslab.org/2024-02-19/safecat.html) for more details.
 
-**Experimental WIP**: Additionally, Safecat contains a feature, `safecat assert`, for creating signed certificates that can be used in Noir proofs.
+**Experimental WIP**: Additionally, Safecat contains a feature, `safecat attest`, for creating signed certificates that can be used in Noir proofs.
 
 ## compile
 Install Rust, and run `cargo build`.
@@ -15,7 +15,7 @@ Install Rust, and run `cargo build`.
 
     The private key is saved in a file `priv.key`, which is not encrypted! Unsafe indeed.
 
-2. `safecat show-keys`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. You need "detailed" if you want to verify the signature in Noir, and "hex" if you verify with safecat.
+2. `safecat show-keys`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. You need "detailed" if you want to verify the signature in Noir (it shows the x and y values of the key), and "hex" if you verify with safecat (it shows the whole key as one big hex string).
 
     Here's how you show the detailed format:
     ```
@@ -34,31 +34,50 @@ Install Rust, and run `cargo build`.
 4. `safecat verify "message" <signature> <public key>`. Verifies an existing signature of a message. By default, it assumed the message was hashed using Poseidon, but you can change it to SHA-256 using the --hash option like before. The signature and public key must be given in a hex form. 
 
     Verify commands are a bit long since the signature and public keys are long, so here's an example of how to use them. It doesn't look pretty.
+
+    In later versions, we'll allow reading the parameters from a file or feed them interactively.
+
     ```
     safecat verify "hello world" 245a157dc8e23ea8a0ab41b1c2d95ee7d59db5b76cba54b6f10630e5e0aefbdd140996400320386a9a2ec4b06ea7d1c885cd311751445ea171af1ab64dba5ace0420d34429497da49443ae35deb8e3daa745dc0e776df3703640078a67982cad 12055e5d761fd705d1f234770fc55b2cfdfd91e741d8f43b2a88cb5a88f9c1c01061ca2f21151da2903e7ccdf11dbda65c20851dd1df4ac522431041ea1738f9
     ```
-5. `safecat assert <public key> <cetification type> <expiration date> <birth date>`, where:
-- `<public key>` is in hex format, e.g, '1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a',
-- `<certification type>` is an integer,
-- `<expiration date>` and `<birth date>` are linux timestamps.
+
+5. `safecat attest`' Create certificates that attest data. So far Safecat supports only attestations of birth certificates (or proof of personhood if you prefer this term).
+
+    You can attest either for a person's public key like this:
+
+    `safecat attest birth-pubkey <public key> <cetification type> <expiration date> <birth date>`,
+
+    or for an EVM-style address:
+`safecat attest birth-address <address> <cetification type> <expiration date> <birth date>`,
+
+
+    , where:
+    - `<public key>` is in hex format, e.g, '1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a',
+    - `<address>` is hex as well, e.g., `f39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+    - `<certification type>` is an integer,
+    - `<expiration date>` and `<birth date>` are linux timestamps.
 
     Example usage:
 
-  ```
-  safecat assert 1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a 1 1713109860 892569062
-  ```
-
-    At this stage, the certificate format is aimed towards proof of humanity and age. We will extend it later for more general certificates.
+    ```
+    safecat attest birth-pubkey 1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a 1 1713109860 892569062
+    ```
 
     Certificates are saved in `certs/created` folder.
 
 6. `safecat show-certs <created|received>`. Show the certificates created or received by the user, which are located in the folder `certs/created` or `certs/received` correspondingly.
 
+   **Comment**. At the moment `show-certs` works properly only for certificates created for public keys. It will be fixed for general certificates later on once we generalize the certificate system.
+
 ## Noir examples
-There are two examples of integrating Safecat with Noir (tested with V0.25.0).
+There are three examples of integrating Safecat with Noir (tested with V0.25.0).
 
 1. [Poseidon hash of a long string](noir-examples/poseidon-hash-long-strings/). Creating a Poseidon hash of long strings in Noir that corresponds to Poseidon hashes created with Safecat.
-2. [Verify certificates](noir-examples/verify_certificates/). Verifying with Noir certificates built by Safecat. This is a big elaborated example.
+2. [Verify certificates for a public key](noir-examples/verify_human_certificates_for_public_key/). Verifying with Noir certificates for a public kez built by Safecat. This is a big elaborated example.
+3. [Verify certificates for an address](noir-examples/verify_human_certificates_for_address/). Same as "example 2", only that this time it verifies certificates for an EVM-style address.
 
 ## Limitations
-Poseidon hash is limited to strings of 496 characters.
+- Poseidon hash is limited to strings of 496 characters.
+- The certificate system is limited only to birth certificates.
+- `show-certs` only show properly certificates created for a public key.
+- ... plenty of other limitations, this is all WIP!
