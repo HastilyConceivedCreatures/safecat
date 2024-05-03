@@ -33,4 +33,4 @@ jobs:
       run: |
         cd noir-examples/verify_human_certificates_for_public_key
         nargo prove
-       nargo verify
+        nargo verify
