@@ -26,11 +26,11 @@ jobs:
         nargo test
     - name: Prove and verify certificate verification circuit for addresses
       run: |
-        cd noir-examples/verify_certificates_for_address
+        cd noir-examples/verify_human_certificates_for_address
         nargo prove
 	nargo verify
     - name: Prove and verify certificate verification circuit for public keys
       run: |
-        cd noir-examples/verify_certificates_for_public_key
+        cd noir-examples/verify_human_certificates_for_public_key
         nargo prove
 	nargo verify
