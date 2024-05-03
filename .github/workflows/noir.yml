@@ -24,11 +24,13 @@ jobs:
       run: |
         cd noir-examples/poseidon-hash-long-strings
         nargo test
-    - name: Prove certificate verification circuit
+    - name: Prove and verify certificate verification circuit for addresses
       run: |
-        cd noir-examples/verify_certificates
+        cd noir-examples/verify_certificates_for_address
         nargo prove
-    - name: Verify certificate verification circuit
+	nargo verify
+    - name: Prove and verify certificate verification circuit for public keys
       run: |
-        cd noir-examples/verify_certificates
-        nargo verify
+        cd noir-examples/verify_certificates_for_public_key
+        nargo prove
+	nargo verify
