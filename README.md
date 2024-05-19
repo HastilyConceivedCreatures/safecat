@@ -5,6 +5,8 @@ A simple CLI tool to generate, sign, and verify digital signatures using EdDSA *
 
 See [the announcement article](http://neimanslab.org/2024-02-19/safecat.html) for more details.
 
+**This branch was made especially for the ZK Hack Krakow Hackathon. It contains two new commands. "sign-field" is used to sign a field directly. "attest birth-name-pubkey" is used to create a certificate for a combination of name (string) and a public key.** 
+
 **Experimental WIP**: Additionally, Safecat contains a feature, `safecat attest`, for creating signed certificates that can be used in Noir proofs.
 
 ## compile
