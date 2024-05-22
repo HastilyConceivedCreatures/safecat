@@ -2,9 +2,7 @@ use crate::{cast, consts, io_utils, Error};
 
 use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Signature};
-use ff_ce::PrimeField;
-use poseidon_ark::Poseidon as PoseidonArk;
-use poseidon_rs::{Fr as FrPoseidon, Poseidon};
+use poseidon_ark::Poseidon;
 
 // Generates a new private key and saves it to file
 pub fn generate(privkey_filename: &str) -> Result<(), Error> {
@@ -221,7 +219,7 @@ pub fn attest(
                 birthdate_fq,
             ];
 
-            let poseidon_ark = PoseidonArk::new();
+            let poseidon_ark = Poseidon::new();
             let hash_fq = poseidon_ark.hash(cert_field_vec)?;
 
             signature = sign_hash(hash_fq)?;
@@ -252,7 +250,7 @@ pub fn attest(
 
             let cert_field_vec = vec![address_fq, expiration_date_fq, cert_type_fq, birthdate_fq];
 
-            let poseidon_ark = PoseidonArk::new();
+            let poseidon_ark = Poseidon::new();
             let hash_fq = poseidon_ark.hash(cert_field_vec)?;
 
             signature = sign_hash(hash_fq)?;
@@ -324,7 +322,7 @@ pub fn attest_pubkey_name(
             birthdate_fq,
         ];
 
-        let poseidon_ark = PoseidonArk::new();
+        let poseidon_ark = Poseidon::new();
         let hash_fq = poseidon_ark.hash(cert_field_vec)?;
 
         signature = sign_hash(hash_fq)?;
@@ -353,23 +351,16 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
         let bytes = message_to_verify_string.as_bytes();
 
         // Pack the message bytes into right-aligned 31-byte chunks
-        let fr_vector: Vec<FrPoseidon> = cast::bytes_to_fields(bytes)
+        let fr_vector: Vec<Fq> = cast::bytes_to_fields(bytes)
             .iter()
-            .map(|&b| FrPoseidon::from_str(&b.to_string()).unwrap())
+            .map(|&b| Fq::from_str(&b.to_string()).unwrap())
             .collect();
 
         // Create a Poseidon hash function
         let poseidon = Poseidon::new();
 
         // // Hash the input vector
-        let poseidon_hash = poseidon.hash(fr_vector).unwrap();
-
-        // turn into a string
-        let mut poseidon_hash_str = poseidon_hash.into_repr().to_string();
-        poseidon_hash_str = cast::hex_to_dec(&poseidon_hash_str).unwrap();
-
-        // turn the hash into Fq
-        hash_fq = Fq::from_str(&poseidon_hash_str).unwrap();
+        hash_fq = poseidon.hash(fr_vector).unwrap();
     } else if hash_algorithm == "sha256" {
         //  hash the message
         let hashed_sha256_message_string = cast::hash256_as_string(message_to_verify_string);
