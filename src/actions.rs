@@ -25,11 +25,12 @@ pub fn show_keys(output_format: String) -> Result<(), Error> {
         return Err("No key has been generated yet.".into());
     }
 
+    // Load private key
     let private_key = io_utils::load_private_key("priv.key")?;
     let public_key = private_key.public();
 
     if output_format == "detailed" {
-        // Print private key
+        // Print private key detailed format
         print!("private key: ");
         io_utils::print_u8_array(&private_key.key, "dec");
         println!("");
@@ -43,7 +44,7 @@ pub fn show_keys(output_format: String) -> Result<(), Error> {
             cast::fq_to_dec_string(&public_key.y)
         );
     } else if output_format == "hex" {
-        // Print private key
+        // Print private key hex format
         print!("private key: ");
         io_utils::print_u8_array(&private_key.key, "hex");
         println!("");
