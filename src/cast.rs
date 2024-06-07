@@ -1,13 +1,11 @@
 /* Collection of castings functions */
-use crate::consts;
+use crate::{bn254_scalar_cast, consts, Error};
 
 use ark_ff::PrimeField as ArkPF;
 use babyjubjub_ark::{Fq, Fr, Point, Signature};
 use num::{BigInt, Num};
 use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
-
-use crate::Error;
 
 pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
     // Catch string errors
@@ -20,12 +18,8 @@ pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
     let (x_string_hex, y_string_hex) = key_string_hex.split_at(64);
 
     // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16)?;
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16)?;
-
-    // Convert BigUint to Fq
-    let x = Fq::from(x_decimal);
-    let y = Fq::from(y_decimal);
+    let x = bn254_scalar_cast::hex_to_bn254_r(x_string_hex)?;
+    let y = bn254_scalar_cast::hex_to_bn254_r(y_string_hex)?;
 
     Ok(Point { x, y })
 }
@@ -41,14 +35,14 @@ pub fn signature_from_str(signature_string_hex: &str) -> Result<Signature, Error
     let (x_string_hex, temp) = signature_string_hex.split_at(64);
     let (y_string_hex, s_string_hex) = temp.split_at(64);
 
+    // convert hex to Fq
+    let x = bn254_scalar_cast::hex_to_bn254_r(x_string_hex)?;
+    let y = bn254_scalar_cast::hex_to_bn254_r(y_string_hex)?;
+
     // Parse hex strings into BigUint
-    let x_decimal = BigUint::from_str_radix(x_string_hex, 16)?;
-    let y_decimal = BigUint::from_str_radix(y_string_hex, 16)?;
     let s_decimal = BigUint::from_str_radix(s_string_hex, 16)?;
 
     // Convert BigUint to Fq
-    let x = Fq::from(x_decimal);
-    let y = Fq::from(y_decimal);
     let s = Fr::from(s_decimal);
 
     let r_b8 = Point { x, y };

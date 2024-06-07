@@ -1,4 +1,4 @@
-use crate::{cast, consts, io_utils, Error};
+use crate::{bn254_scalar_cast, cast, consts, io_utils, Error};
 
 use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Signature};
@@ -244,6 +244,11 @@ pub fn attest(
         if format == "field" {
             let address_dec = cast::hex_to_dec(&id).unwrap();
             let address_fq = Fq::from_str(&*address_dec).unwrap();
+
+            let address_fq2 = bn254_scalar_cast::hex_to_bn254_r(&id)?;
+
+            println!("address_fq method 1: {}", address_fq);
+            println!("address_fq method 2: {}", address_fq2);
 
             let expiration_date_fq = Fq::from(expiration_date);
             let cert_type_fq = Fq::from(cert_type);
