@@ -156,7 +156,7 @@ pub fn bytes_to_fields(bs: &[u8]) -> Vec<Fq> {
     packed_fields
 }
 
-fn hash_to_bigint(hash: &[u8]) -> BigUint {
+pub fn hash_to_bigint(hash: &[u8]) -> BigUint {
     // Reverse the bytes because BigUint uses little-endian order
     let reversed_hash: Vec<u8> = hash.iter().rev().cloned().collect();
 

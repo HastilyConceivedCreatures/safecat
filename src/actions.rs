@@ -1,7 +1,16 @@
-use crate::{bn254_scalar_cast, cast, consts, io_utils, Error};
+use crate::{
+    bn254_scalar_cast, cast,
+    certificate::{
+        self, BabyjubjubPubkey, Cert, CertField, CertFormat, FieldType, FieldTypeName, FormatField,
+        WoolballName,
+    },
+    consts, io_utils, Error,
+};
 
 use ark_std::str::FromStr;
 use babyjubjub_ark::{new_key, verify, Fq, Signature};
+use chrono::{DateTime, Months, NaiveDate, Utc};
+use inquire::{formatter::DEFAULT_DATE_FORMATTER, CustomType, Text};
 use poseidon_ark::Poseidon;
 
 // Generates a new private key and saves it to file
@@ -172,182 +181,289 @@ pub fn verify_signature(
     Ok(())
 }
 
-// Creates a certificate
-pub fn attest(
-    id: String,
-    cert_type: u32,
-    expiration_date: u64,
-    birthdate: u64,
-    hash_algorithm: String,
-    format: String,
-) -> Result<(), Error> {
-    // validate expiration date is in the future
-    io_utils::verify_timestamp(expiration_date, false)?;
+pub fn create_cert_format_woolball_pubkeybabyjubjub() -> certificate::CertFormat {
+    let mut format = certificate::CertFormat {
+        to: vec![],
+        body: vec![],
+    };
 
-    // validate expiration date is in the past
-    io_utils::verify_timestamp(birthdate, true)?;
+    let woolballname_field = certificate::FormatField {
+        fname: "WoolballName".to_string(),
+        fdescription: "Who is the certificate for (Woolball#): ".to_string(),
+        ftype: certificate::FieldTypeName::Name,
+    };
 
-    let cert_json: String;
-    let signature: Signature;
+    let babyjubjubpubkey_field = certificate::FormatField {
+        fname: "BabyjubjubPubkey".to_string(),
+        fdescription: "BabyjubjubPubkey (128 hex): ".to_string(),
+        ftype: certificate::FieldTypeName::BabyjubjubPubkey,
+    };
 
-    // type == 1 means certificate where the id is a public key
-    if cert_type == 1 {
-        // validate public key input and split it into x and y
-        let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&id);
+    let birthday_field: FormatField = certificate::FormatField {
+        fname: "Birthdate".to_string(),
+        fdescription: "Date of birth".to_string(),
+        ftype: certificate::FieldTypeName::Timestamp,
+    };
 
-        // create certificate json
-        cert_json = format!(
-            r#"{{"x":"{}","y":"{}","type":{},"expdate":{},"bdate":{}}}"#,
-            pubic_key_x_str, pubic_key_y_str, cert_type, expiration_date, birthdate
-        );
+    format.to.push(woolballname_field);
+    format.to.push(babyjubjubpubkey_field);
+    format.body.push(birthday_field);
 
-        if format == "field" {
-            // create the certificate as a vector of Fq elements and sign it
-            let public_key_x_dec = cast::hex_to_dec(&pubic_key_x_str)?;
-            let public_key_y_dec = cast::hex_to_dec(&pubic_key_y_str)?;
-            let public_key_x_fq = Fq::from_str(&*public_key_x_dec).unwrap();
-            let public_key_y_fq = Fq::from_str(&*public_key_y_dec).unwrap();
+    format
+}
 
-            let expiration_date_fq = Fq::from(expiration_date);
-            let cert_type_fq = Fq::from(cert_type);
-            let birthdate_fq = Fq::from(birthdate);
+pub fn create_cert_format_pubkeybabyjubjub() -> certificate::CertFormat {
+    let mut format = certificate::CertFormat {
+        to: vec![],
+        body: vec![],
+    };
 
-            let cert_field_vec = vec![
-                public_key_x_fq,
-                public_key_y_fq,
-                expiration_date_fq,
-                cert_type_fq,
-                birthdate_fq,
-            ];
+    let babyjubjubpubkey_field = certificate::FormatField {
+        fname: "BabyjubjubPubkey".to_string(),
+        fdescription: "BabyjubjubPubkey (128 hex): ".to_string(),
+        ftype: certificate::FieldTypeName::BabyjubjubPubkey,
+    };
 
-            let poseidon_ark = Poseidon::new();
-            let hash_fq = poseidon_ark.hash(cert_field_vec)?;
+    let birthday_field: FormatField = certificate::FormatField {
+        fname: "Birthdate".to_string(),
+        fdescription: "Date of birth".to_string(),
+        ftype: certificate::FieldTypeName::Timestamp,
+    };
 
-            signature = sign_hash(hash_fq)?;
-        } else {
-            // Simply sign the JSON certificate
-            (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
-                Ok((signature, fq)) => Ok((signature, fq)),
-                Err(err) => Err(err),
-            }?;
-        }
-    } else {
-        // type == 2 means certificate where the id is a blockchain address
+    format.to.push(babyjubjubpubkey_field);
+    format.body.push(birthday_field);
 
-        // create certificate json
-        cert_json = format!(
-            r#"{{"address":"{}","type":{},"expdate":{},"bdate":{}}}"#,
-            id, cert_type, expiration_date, birthdate
-        );
+    format
+}
 
-        // create the certificate as a vector of Fq elements and sign it
-        if format == "field" {
-            let address_dec = cast::hex_to_dec(&id).unwrap();
-            let address_fq = Fq::from_str(&*address_dec).unwrap();
+fn insert_cert_data(format: CertFormat) -> Cert {
+    let mut cert = Cert {
+        to: vec![],
+        body: vec![],
+        expiration: Utc::now().checked_add_months(Months::new(12)).unwrap(), // one year from now
+    };
 
-            let address_fq2 = bn254_scalar_cast::hex_to_bn254_r(&id)?;
+    for field in format.to {
+        match field.ftype {
+            FieldTypeName::WoolballName => {
+                let name = Text::new(&field.fdescription).prompt().unwrap();
+                let woolball_name = WoolballName { name };
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::WoolballName(woolball_name),
+                };
 
-            println!("address_fq method 1: {}", address_fq);
-            println!("address_fq method 2: {}", address_fq2);
+                cert.to.push(cert_field);
+            }
+            FieldTypeName::BabyjubjubPubkey => {
+                // Promptfor pubkey
+                let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
 
-            let expiration_date_fq = Fq::from(expiration_date);
-            let cert_type_fq = Fq::from(cert_type);
-            let birthdate_fq = Fq::from(birthdate);
+                // Cast pubkey from hex string to vec of BN245R
+                let pubkey_vec =
+                    bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
 
-            let cert_field_vec = vec![address_fq, expiration_date_fq, cert_type_fq, birthdate_fq];
+                // validate public key input and split it into x and y
+                let babyjubjub_pubkey: BabyjubjubPubkey = BabyjubjubPubkey {
+                    x: pubkey_vec[0],
+                    y: pubkey_vec[1],
+                };
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+                };
 
-            let poseidon_ark = Poseidon::new();
-            let hash_fq = poseidon_ark.hash(cert_field_vec)?;
-
-            signature = sign_hash(hash_fq)?;
-        } else {
-            // Simply sign the JSON certificate
-            (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
-                Ok((signature, fq)) => Ok((signature, fq)),
-                Err(err) => Err(err),
-            }?;
+                cert.to.push(cert_field);
+            }
+            _ => {
+                println!("");
+            }
         }
     }
 
-    // save certificates to file
-    let base_filename = format!("{}-{}", id, cert_type);
-    let filename = io_utils::save_certificate(&base_filename, &cert_json, signature);
+    for field in format.body {
+        match field.ftype {
+            FieldTypeName::Name => {
+                let name: String = Text::new(&field.fdescription).prompt().unwrap();
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::Name(name),
+                };
+
+                cert.body.push(cert_field);
+            }
+            FieldTypeName::BabyjubjubPubkey => {
+                // Prompt for pubkey
+                let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
+
+                // Create BabyjubjubPubkey from hex string
+                let babyjubjub_pubkey: BabyjubjubPubkey =
+                    BabyjubjubPubkey::from_str_hex(pubkey_hex_str);
+
+                // create certificate field
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+                };
+
+                cert.body.push(cert_field);
+            }
+            FieldTypeName::Timestamp => {
+                let datetime_utc: DateTime<Utc> = CustomType::<NaiveDate>::new(&field.fdescription)
+                    .with_placeholder("dd/mm/yyyy")
+                    .with_parser(&|i| NaiveDate::parse_from_str(i, "%d/%m/%Y").map_err(|_e| ()))
+                    .with_formatter(DEFAULT_DATE_FORMATTER)
+                    .with_error_message("Please type a valid date.")
+                    .prompt()
+                    .unwrap()
+                    .and_hms_opt(23, 59, 59)
+                    .unwrap()
+                    .and_utc();
+
+                // create certificate field
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::Timestamp(datetime_utc),
+                };
+
+                cert.body.push(cert_field);
+            }
+            FieldTypeName::Age => {
+                // Prompt for age
+                let age_str = Text::new(&field.fdescription).prompt();
+
+                match age_str {
+                    Ok(age_str) => match age_str.parse::<u32>() {
+                        Ok(age) if age <= 120 => {
+                            let cert_field = CertField {
+                                metadata: field,
+                                field: FieldType::Age(age),
+                            };
+
+                            cert.body.push(cert_field);
+                        }
+                        Ok(_) => println!("Please enter a valid age between 0 and 120."),
+                        Err(_) => println!("Bad age, bad bad!"),
+                    },
+                    Err(_) => println!("Bad age, bad bad!"),
+                }
+            }
+            _ => {
+                println!("");
+            }
+        }
+    }
+
+    // get expiration date
+    let expiration_utc: DateTime<Utc> = CustomType::<NaiveDate>::new("Expiration date:")
+        .with_placeholder("dd/mm/yyyy")
+        .with_parser(&|i| NaiveDate::parse_from_str(i, "%d/%m/%Y").map_err(|_e| ()))
+        .with_formatter(DEFAULT_DATE_FORMATTER)
+        .with_error_message("Please type a valid date.")
+        .prompt()
+        .unwrap()
+        .and_hms_opt(23, 59, 59)
+        .unwrap()
+        .and_utc();
+
+    // create certificate field
+    cert.expiration = expiration_utc;
+
+    cert
+}
+
+pub fn attest(format: String) -> Result<(), Error> {
+    let cert_format: CertFormat;
+    if format == "babyjubjub" {
+        cert_format = create_cert_format_woolball_pubkeybabyjubjub();
+    } else {
+        cert_format = create_cert_format_pubkeybabyjubjub();
+    }
+
+    let cert: Cert = insert_cert_data(cert_format);
+    let cert_hash = cert.poseidon_hash();
+
+    let signature = sign_hash(cert_hash).unwrap();
+
+    // save certificates to file TODO: FIX NAME
+    let cert_ID = cert.ID();
+    let cert_json = format!("{:?}", cert);
+    let filename = io_utils::save_certificate(&cert_ID, &cert_json, signature);
 
     println!("The certificate was saved to file: {}", filename?);
 
     Ok(())
 }
 
-pub fn attest_pubkey_name(
-    pubkey: String,
-    name: String,
-    cert_type: u32,
-    expiration_date: u64,
-    birthdate: u64,
-    hash_algorithm: String,
-    format: String,
-) -> Result<(), Error> {
-    // validate expiration date is in the future
-    io_utils::verify_timestamp(expiration_date, false)?;
+// pub fn attest_pubkey_name(
+//     pubkey: String,
+//     name: String,
+//     cert_type: u32,
+//     expiration_date: u64,
+//     birthdate: u64,
+//     hash_algorithm: String,
+//     format: String,
+// ) -> Result<(), Error> {
+//     // validate expiration date is in the future
+//     io_utils::verify_timestamp(expiration_date, false)?;
 
-    // validate expiration date is in the past
-    io_utils::verify_timestamp(birthdate, true)?;
+//     // validate expiration date is in the past
+//     io_utils::verify_timestamp(birthdate, true)?;
 
-    let cert_json: String;
-    let signature: Signature;
+//     let cert_json: String;
+//     let signature: Signature;
 
-    // validate public key input and split it into x and y
-    let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&pubkey);
+//     // validate public key input and split it into x and y
+//     let (pubic_key_x_str, pubic_key_y_str) = io_utils::split_hex_string(&pubkey);
 
-    // create certificate json
-    cert_json = format!(
-        r#"{{"x":"{}","y":"{}","name": {},"type":{},"expdate":{},"bdate":{}}}"#,
-        pubic_key_x_str, pubic_key_y_str, name, cert_type, expiration_date, birthdate
-    );
+//     // create certificate json
+//     cert_json = format!(
+//         r#"{{"x":"{}","y":"{}","name": {},"type":{},"expdate":{},"bdate":{}}}"#,
+//         pubic_key_x_str, pubic_key_y_str, name, cert_type, expiration_date, birthdate
+//     );
 
-    if format == "field" {
-        // create the certificate as a vector of Fq elements and sign it
-        let public_key_x_dec = cast::hex_to_dec(&pubic_key_x_str)?;
-        let public_key_y_dec = cast::hex_to_dec(&pubic_key_y_str)?;
-        let public_key_x_fq = Fq::from_str(&*public_key_x_dec).unwrap();
-        let public_key_y_fq = Fq::from_str(&*public_key_y_dec).unwrap();
+//     if format == "field" {
+//         // create the certificate as a vector of Fq elements and sign it
+//         let public_key_x_dec = cast::hex_to_dec(&pubic_key_x_str)?;
+//         let public_key_y_dec = cast::hex_to_dec(&pubic_key_y_str)?;
+//         let public_key_x_fq = Fq::from_str(&*public_key_x_dec).unwrap();
+//         let public_key_y_fq = Fq::from_str(&*public_key_y_dec).unwrap();
 
-        let name_fq = Fq::from_str(&*name).unwrap();
-        println!("name_fq: {}", name_fq);
+//         let name_fq = Fq::from_str(&*name).unwrap();
 
-        let expiration_date_fq = Fq::from(expiration_date);
-        let cert_type_fq = Fq::from(cert_type);
-        let birthdate_fq = Fq::from(birthdate);
+//         let expiration_date_fq = Fq::from(expiration_date);
+//         let cert_type_fq = Fq::from(cert_type);
+//         let birthdate_fq = Fq::from(birthdate);
 
-        let cert_field_vec = vec![
-            public_key_x_fq,
-            public_key_y_fq,
-            name_fq,
-            expiration_date_fq,
-            cert_type_fq,
-            birthdate_fq,
-        ];
+//         let cert_field_vec = vec![
+//             public_key_x_fq,
+//             public_key_y_fq,
+//             name_fq,cyc
+//             expiration_date_fq,
+//             cert_type_fq,
+//             birthdate_fq,
+//         ];
 
-        let poseidon_ark = Poseidon::new();
-        let hash_fq = poseidon_ark.hash(cert_field_vec)?;
+//         let poseidon_ark = Poseidon::new();
+//         let hash_fq = poseidon_ark.hash(cert_field_vec)?;
 
-        signature = sign_hash(hash_fq)?;
-    } else {
-        // Simply sign the JSON certificate
-        (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
-            Ok((signature, fq)) => Ok((signature, fq)),
-            Err(err) => Err(err),
-        }?;
-    }
+//         signature = sign_hash(hash_fq)?;
+//     } else {
+//         // Simply sign the JSON certificate
+//         (signature, _) = match sign_message(cert_json.clone(), hash_algorithm) {
+//             Ok((signature, fq)) => Ok((signature, fq)),
+//             Err(err) => Err(err),
+//         }?;
+//     }
 
-    // save certificates to file
-    let base_filename = format!("{}-{}", name, cert_type);
-    let filename = io_utils::save_certificate(&base_filename, &cert_json, signature);
+//     // save certificates to file
+//     let base_filename = format!("{}-{}", name, cert_type);
+//     let filename = io_utils::save_certificate(&base_filename, &cert_json, signature);
 
-    println!("The certificate was saved to file: {}", filename?);
+//     println!("The certificate was saved to file: {}", filename?);
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 // Calculate hash_fq based on hash_algorithm
 fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq {

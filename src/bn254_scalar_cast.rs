@@ -9,7 +9,7 @@ use num_bigint::BigUint;
 use poseidon_ark::Poseidon;
 
 // for date_to_bn254
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 
 // existing functions
 // BN254R::from(x), where x is u128/u64/u32/u8/bool or i128/i64/i32/i8,
@@ -25,7 +25,6 @@ pub fn hex_to_bn254_r(hex_string: &str) -> Result<BN254R, Error> {
 
     // Convert hex string to BigUint
     let x_decimal = BigUint::from_str_radix(hex_str, 16)?;
-    println!("x_decimal: {}", x_decimal);
 
     // Convert BigUint to Fq
     let x = BN254R::from(x_decimal);
@@ -83,12 +82,12 @@ pub fn uint256_str_to_hex_str(uint256_str: &str) -> Result<String, Error> {
     }
 }
 
-pub fn date_to_bn254(date: &str) -> Result<BN254R, Error> {
+pub fn str_date_to_bn254(date: &str) -> Result<BN254R, Error> {
     // Try to parse the input as a date (YYYY-MM-DD)
     if let Ok(naive_date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") {
         // Naive date time, with no time zone information
         let naive_datetime =
-            NaiveDateTime::new(naive_date, NaiveTime::from_hms_opt(0, 0, 0).unwrap());
+            NaiveDateTime::new(naive_date, NaiveTime::from_hms_opt(23, 59, 59).unwrap());
         let timestamp = naive_datetime.and_utc().timestamp();
 
         println!("datetime_utc: {}", timestamp);
@@ -103,6 +102,12 @@ pub fn date_to_bn254(date: &str) -> Result<BN254R, Error> {
 
     // If both parsing attempts fail, return an error
     Err("Bad date format")?
+}
+
+pub fn datetime_utc_to_bn254(datetime: DateTime<Utc>) -> Result<BN254R, Error> {
+    let datetime_i64 = datetime.timestamp();
+
+    Ok(BN254R::from(datetime_i64))
 }
 
 // String message to bn256 vector
@@ -141,4 +146,11 @@ pub fn babyjubjub_pubkey_to_bn254(pubkey: &str) -> Result<Vec<BN254R>, Error> {
 
     // Return the result as a vector
     Ok(vec![pubkey_x_bn254r, pubkey_y_bn254r])
+}
+
+pub fn EVM_address_to_bn254(hex_address: &str) -> Result<BN254R, Error> {
+    let address_dec = cast::hex_to_dec(&hex_address).unwrap();
+    let address_bn254 = BN254R::from_str(&*address_dec).unwrap();
+
+    Ok(address_bn254)
 }

@@ -54,5 +54,10 @@ pub enum Commands {
     },
 
     /// Create a certification from an assertation
-    Assert { address: String },
+    Attest {
+        #[arg(long, value_parser = ["babyjubjub", "babyjubjub-evmaddres", "babyjubjub-woolball"], default_value = "babyjubjub")]
+        certificate_type: String,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        _args: Vec<String>,
+    },
 }
