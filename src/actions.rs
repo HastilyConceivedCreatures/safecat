@@ -1,10 +1,9 @@
 use crate::{
     bn254_scalar_cast, cast,
     certificate::{
-        self, BabyjubjubPubkey, Cert, CertField, CertFormat, FieldType, FieldTypeName, FormatField,
-        WoolballName,
+        BabyjubjubPubkey, Cert, CertField, CertFormat, FieldType, FieldTypeName, WoolballName,
     },
-    consts, io_utils, Error,
+    certificate_formats, consts, io_utils, Error,
 };
 
 use ark_std::str::FromStr;
@@ -181,61 +180,6 @@ pub fn verify_signature(
     Ok(())
 }
 
-pub fn create_cert_format_woolball_pubkeybabyjubjub() -> certificate::CertFormat {
-    let mut format = certificate::CertFormat {
-        to: vec![],
-        body: vec![],
-    };
-
-    let woolballname_field = certificate::FormatField {
-        fname: "WoolballName".to_string(),
-        fdescription: "Who is the certificate for (Woolball#): ".to_string(),
-        ftype: certificate::FieldTypeName::Name,
-    };
-
-    let babyjubjubpubkey_field = certificate::FormatField {
-        fname: "BabyjubjubPubkey".to_string(),
-        fdescription: "BabyjubjubPubkey (128 hex): ".to_string(),
-        ftype: certificate::FieldTypeName::BabyjubjubPubkey,
-    };
-
-    let birthday_field: FormatField = certificate::FormatField {
-        fname: "Birthdate".to_string(),
-        fdescription: "Date of birth".to_string(),
-        ftype: certificate::FieldTypeName::Timestamp,
-    };
-
-    format.to.push(woolballname_field);
-    format.to.push(babyjubjubpubkey_field);
-    format.body.push(birthday_field);
-
-    format
-}
-
-pub fn create_cert_format_pubkeybabyjubjub() -> certificate::CertFormat {
-    let mut format = certificate::CertFormat {
-        to: vec![],
-        body: vec![],
-    };
-
-    let babyjubjubpubkey_field = certificate::FormatField {
-        fname: "BabyjubjubPubkey".to_string(),
-        fdescription: "BabyjubjubPubkey (128 hex): ".to_string(),
-        ftype: certificate::FieldTypeName::BabyjubjubPubkey,
-    };
-
-    let birthday_field: FormatField = certificate::FormatField {
-        fname: "Birthdate".to_string(),
-        fdescription: "Date of birth".to_string(),
-        ftype: certificate::FieldTypeName::Timestamp,
-    };
-
-    format.to.push(babyjubjubpubkey_field);
-    format.body.push(birthday_field);
-
-    format
-}
-
 fn insert_cert_data(format: CertFormat) -> Cert {
     let mut cert = Cert {
         to: vec![],
@@ -268,9 +212,20 @@ fn insert_cert_data(format: CertFormat) -> Cert {
                     x: pubkey_vec[0],
                     y: pubkey_vec[1],
                 };
+
                 let cert_field = CertField {
                     metadata: field,
                     field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+                };
+
+                cert.to.push(cert_field);
+            }
+            FieldTypeName::EVMAddress => {
+                let address_hex_str = Text::new(&field.fdescription).prompt().unwrap();
+
+                let cert_field = CertField {
+                    metadata: field,
+                    field: FieldType::EVMAddress(address_hex_str),
                 };
 
                 cert.to.push(cert_field);
@@ -283,7 +238,7 @@ fn insert_cert_data(format: CertFormat) -> Cert {
 
     for field in format.body {
         match field.ftype {
-            FieldTypeName::Name => {
+            FieldTypeName::WoolballName => {
                 let name: String = Text::new(&field.fdescription).prompt().unwrap();
                 let cert_field = CertField {
                     metadata: field,
@@ -375,9 +330,11 @@ fn insert_cert_data(format: CertFormat) -> Cert {
 pub fn attest(format: String) -> Result<(), Error> {
     let cert_format: CertFormat;
     if format == "babyjubjub" {
-        cert_format = create_cert_format_woolball_pubkeybabyjubjub();
+        cert_format = certificate_formats::cert_format_woolball_pubkeybabyjubjub();
+    } else if format == "babyjubjub-evmaddres" {
+        cert_format = certificate_formats::cert_format_evm_address();
     } else {
-        cert_format = create_cert_format_pubkeybabyjubjub();
+        cert_format = certificate_formats::cert_format_pubkeybabyjubjub();
     }
 
     let cert: Cert = insert_cert_data(cert_format);
@@ -386,9 +343,9 @@ pub fn attest(format: String) -> Result<(), Error> {
     let signature = sign_hash(cert_hash).unwrap();
 
     // save certificates to file TODO: FIX NAME
-    let cert_ID = cert.ID();
+    let cert_id = cert.id();
     let cert_json = format!("{:?}", cert);
-    let filename = io_utils::save_certificate(&cert_ID, &cert_json, signature);
+    let filename = io_utils::save_certificate(&cert_id, &cert_json, signature);
 
     println!("The certificate was saved to file: {}", filename?);
 

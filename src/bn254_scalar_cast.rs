@@ -148,7 +148,7 @@ pub fn babyjubjub_pubkey_to_bn254(pubkey: &str) -> Result<Vec<BN254R>, Error> {
     Ok(vec![pubkey_x_bn254r, pubkey_y_bn254r])
 }
 
-pub fn EVM_address_to_bn254(hex_address: &str) -> Result<BN254R, Error> {
+pub fn evm_address_to_bn254(hex_address: &str) -> Result<BN254R, Error> {
     let address_dec = cast::hex_to_dec(&hex_address).unwrap();
     let address_bn254 = BN254R::from_str(&*address_dec).unwrap();
 

@@ -1,12 +1,21 @@
+use crate::{ansi_cat::AnsiCat, io_utils};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(name = "Safecat")]
 #[command(version = "0.0.5")]
-#[command(about = include_str!("safecat.txt"), subcommand_required = true, arg_required_else_help = true)]
+#[command(about = cat_is_talking_now(), subcommand_required = true, arg_required_else_help = true)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+fn cat_is_talking_now() -> &'static str {
+    let cat = AnsiCat::load("src/ansi_cat/ansi_cat.ansi".to_string()).unwrap();
+
+    let sentence = io_utils::read_random_line("src/ansi_cat/help_sentences.txt").unwrap();
+
+    cat.talk(9, 2, sentence)
 }
 
 #[derive(Subcommand, Debug)]

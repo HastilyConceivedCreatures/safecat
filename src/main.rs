@@ -1,7 +1,9 @@
 mod actions;
+mod ansi_cat;
 mod bn254_scalar_cast;
 mod cast; // module for casting between types
 mod certificate;
+mod certificate_formats;
 mod cli;
 mod consts;
 mod io_utils;
@@ -61,7 +63,7 @@ fn main() -> Result<(), Error> {
             certificate_type,
             _args,
         } => {
-            actions::attest(certificate_type.to_string());
+            actions::attest(certificate_type.to_string())?;
         }
     }
 

@@ -21,7 +21,6 @@ pub enum FieldType {
 /// Enum representing the names of the various field types.
 #[derive(Debug, Serialize)]
 pub enum FieldTypeName {
-    Name,
     Timestamp,
     Age,
     BabyjubjubPubkey,
@@ -93,14 +92,14 @@ impl Cert {
                     cert_vec.append(&mut woolball_name_254r_vec);
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
-                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_BN254R();
+                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
 
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
 
                 FieldType::EVMAddress(ref evm_address) => {
                     let evm_address_bn254 =
-                        bn254_scalar_cast::EVM_address_to_bn254(&evm_address).unwrap();
+                        bn254_scalar_cast::evm_address_to_bn254(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
@@ -123,13 +122,13 @@ impl Cert {
                     cert_vec.append(&mut woolball_name_254r_vec);
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
-                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_BN254R();
+                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
 
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
                 FieldType::EVMAddress(ref evm_address) => {
                     let evm_address_bn254 =
-                        bn254_scalar_cast::EVM_address_to_bn254(&evm_address).unwrap();
+                        bn254_scalar_cast::evm_address_to_bn254(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
@@ -157,7 +156,7 @@ impl Cert {
         cert_vec
     }
 
-    pub fn ID(&self) -> String {
+    pub fn id(&self) -> String {
         // Concatenate the data from the `to` field
         let mut data = String::new();
         for cert_field in &self.to {
@@ -186,12 +185,12 @@ pub struct WoolballName {
 }
 
 impl WoolballName {
-    pub fn ID(&self) -> BN254R {
+    pub fn id(&self) -> BN254R {
         bn254_scalar_cast::woolball_name_to_bn254(&self.name).unwrap()
     }
 
     pub fn to_bn254r_vec(&self) -> Vec<BN254R> {
-        vec![self.ID()]
+        vec![self.id()]
     }
 }
 
@@ -213,7 +212,7 @@ impl BabyjubjubPubkey {
         }
     }
 
-    pub fn to_BN254R(&self) -> Vec<BN254R> {
+    pub fn to_bn254_r(&self) -> Vec<BN254R> {
         vec![self.x, self.y]
     }
 

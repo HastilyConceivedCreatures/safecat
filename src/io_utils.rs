@@ -2,6 +2,9 @@
 saving, loading, and printing */
 
 use babyjubjub_ark::{PrivateKey, Signature};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::error::Error as stdError;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -273,4 +276,23 @@ pub fn show_certs(folder_path: &str) -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+pub fn read_random_line<P>(filename: P) -> Result<String, Box<dyn stdError>>
+where
+    P: AsRef<Path>,
+{
+    // Open the file
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+
+    // Collect lines into a vector
+    let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
+
+    // Get a random line
+    let mut rng = thread_rng();
+    match lines.choose(&mut rng) {
+        Some(line) => Ok(line.clone()),
+        None => Err("The file is empty".into()),
+    }
 }
