@@ -1,8 +1,6 @@
 use crate::{
-    bn254_scalar_cast, cast,
-    certificate::{
-        BabyjubjubPubkey, Cert, CertField, CertFormat, FieldType, FieldTypeName, WoolballName,
-    },
+    babyjubjub, bn254_scalar_cast, cast,
+    certificate::{Cert, CertField, CertFormat, FieldType, FieldTypeName, WoolballName},
     certificate_formats, consts, io_utils, Error,
 };
 
@@ -35,7 +33,7 @@ pub fn show_keys(output_format: String) -> Result<(), Error> {
 
     // Load private key
     let private_key = io_utils::load_private_key("priv.key")?;
-    let public_key = private_key.public();
+    let public_key = babyjubjub::Pubkey::from_point(private_key.public());
 
     if output_format == "detailed" {
         // Print private key detailed format
@@ -58,11 +56,7 @@ pub fn show_keys(output_format: String) -> Result<(), Error> {
         println!("");
 
         // Print public key
-        print!("public key: ");
-        let hex_string_x = cast::fq_to_hex_string(&public_key.x);
-        let hex_string_y = cast::fq_to_hex_string(&public_key.y);
-
-        println!("{}{}", hex_string_x, hex_string_y);
+        print!("public key: {}", public_key.to_str_hex());
     }
 
     Ok(())
@@ -208,7 +202,7 @@ fn insert_cert_data(format: CertFormat) -> Cert {
                     bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
 
                 // validate public key input and split it into x and y
-                let babyjubjub_pubkey: BabyjubjubPubkey = BabyjubjubPubkey {
+                let babyjubjub_pubkey: babyjubjub::Pubkey = babyjubjub::Pubkey {
                     x: pubkey_vec[0],
                     y: pubkey_vec[1],
                 };
@@ -252,8 +246,8 @@ fn insert_cert_data(format: CertFormat) -> Cert {
                 let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
 
                 // Create BabyjubjubPubkey from hex string
-                let babyjubjub_pubkey: BabyjubjubPubkey =
-                    BabyjubjubPubkey::from_str_hex(pubkey_hex_str);
+                let babyjubjub_pubkey: babyjubjub::Pubkey =
+                    babyjubjub::Pubkey::from_str_hex(pubkey_hex_str);
 
                 // create certificate field
                 let cert_field = CertField {

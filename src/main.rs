@@ -1,5 +1,6 @@
 mod actions;
 mod ansi_cat;
+mod babyjubjub;
 mod bn254_scalar_cast;
 mod cast; // module for casting between types
 mod certificate;
