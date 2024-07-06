@@ -7,7 +7,6 @@ use rand::thread_rng;
 use std::error::Error as stdError;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs, fs::File};
 
 use crate::cast; // module for casting between types
@@ -94,58 +93,58 @@ pub fn split_hex_string(input: &str) -> (String, String) {
     (first_half.to_string(), second_half.to_string())
 }
 
-// Verifies a timestamp relative to the current time, checking if it is within specified
-// time bounds. Takes a timestamp, a boolean indicating if the timestamp is in the past,
-// and prints relevant messages to the console.
-pub fn verify_timestamp(timestamp: u64, past: bool) -> Result<(), Error> {
-    // Constants representing the number of seconds in 100 and 10 years
-    let hundred_years_seconds = 3153600000;
-    let ten_years_seconds = 315360000;
+// // Verifies a timestamp relative to the current time, checking if it is within specified
+// // time bounds. Takes a timestamp, a boolean indicating if the timestamp is in the past,
+// // and prints relevant messages to the console.
+// pub fn verify_timestamp(timestamp: u64, past: bool) -> Result<(), Error> {
+//     // Constants representing the number of seconds in 100 and 10 years
+//     let hundred_years_seconds = 3153600000;
+//     let ten_years_seconds = 315360000;
 
-    // Obtain the current time as a duration since the UNIX epoch
-    // We work with Duration in order to add timestamps
-    let current_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("Failed to get current time: {}", e))?;
+//     // Obtain the current time as a duration since the UNIX epoch
+//     // We work with Duration in order to add timestamps
+//     let current_time = SystemTime::now()
+//         .duration_since(UNIX_EPOCH)
+//         .map_err(|e| format!("Failed to get current time: {}", e))?;
 
-    // Convert the timestamp to a duration since the UNIX epoch
-    let timestamp_time = UNIX_EPOCH + std::time::Duration::from_secs(timestamp);
-    let timestamp_duration = timestamp_time
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| format!("Failed to calculate duration: {}", e))?;
+//     // Convert the timestamp to a duration since the UNIX epoch
+//     let timestamp_time = UNIX_EPOCH + std::time::Duration::from_secs(timestamp);
+//     let timestamp_duration = timestamp_time
+//         .duration_since(UNIX_EPOCH)
+//         .map_err(|e| format!("Failed to calculate duration: {}", e))?;
 
-    if past {
-        // Check if the timestamp is in the future
-        if timestamp_duration > current_time {
-            println!("{} is a timestamp in the future", timestamp);
-            std::process::exit(1);
-        // Check if the timestamp is more than 100 years in the past
-        } else if current_time - timestamp_duration
-            > std::time::Duration::from_secs(hundred_years_seconds)
-        {
-            println!(
-                "{} is a timestamp more than 100 years in the past",
-                timestamp
-            );
-        }
-    } else {
-        // Check if the timestamp is in the past
-        if timestamp_duration < current_time {
-            println!("{} is a timestamp in the past", timestamp);
-            std::process::exit(1);
-        // Check if the timestamp is more than 10 years in the future
-        } else if timestamp_duration - current_time
-            > std::time::Duration::from_secs(ten_years_seconds)
-        {
-            println!(
-                "{} is a timestamp more than 10 years in the future",
-                timestamp
-            );
-        }
-    }
+//     if past {
+//         // Check if the timestamp is in the future
+//         if timestamp_duration > current_time {
+//             println!("{} is a timestamp in the future", timestamp);
+//             std::process::exit(1);
+//         // Check if the timestamp is more than 100 years in the past
+//         } else if current_time - timestamp_duration
+//             > std::time::Duration::from_secs(hundred_years_seconds)
+//         {
+//             println!(
+//                 "{} is a timestamp more than 100 years in the past",
+//                 timestamp
+//             );
+//         }
+//     } else {
+//         // Check if the timestamp is in the past
+//         if timestamp_duration < current_time {
+//             println!("{} is a timestamp in the past", timestamp);
+//             std::process::exit(1);
+//         // Check if the timestamp is more than 10 years in the future
+//         } else if timestamp_duration - current_time
+//             > std::time::Duration::from_secs(ten_years_seconds)
+//         {
+//             println!(
+//                 "{} is a timestamp more than 10 years in the future",
+//                 timestamp
+//             );
+//         }
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 // saves a certificate
 pub fn save_certificate(

@@ -81,15 +81,9 @@ impl Cert {
 
         for cert_field in &self.to {
             let field = &cert_field.field;
-            println!("field: {:?}", field);
             match field {
                 FieldType::WoolballName(ref woolball_name) => {
-                    let woolball_name_bn254r =
-                        bn254_scalar_cast::woolball_name_to_bn254(&woolball_name.name).unwrap();
-
-                    let mut woolball_name_254r_vec = vec![woolball_name_bn254r];
-
-                    cert_vec.append(&mut woolball_name_254r_vec);
+                    cert_vec.append(&mut woolball_name.to_bn254r_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
@@ -114,12 +108,7 @@ impl Cert {
             let field = &cert_field.field;
             match field {
                 FieldType::WoolballName(ref woolball_name) => {
-                    let woolball_name_bn254r =
-                        bn254_scalar_cast::woolball_name_to_bn254(&woolball_name.name).unwrap();
-
-                    let mut woolball_name_254r_vec = vec![woolball_name_bn254r];
-
-                    cert_vec.append(&mut woolball_name_254r_vec);
+                    cert_vec.append(&mut woolball_name.to_bn254r_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
@@ -216,10 +205,10 @@ impl BabyjubjubPubkey {
         vec![self.x, self.y]
     }
 
-    pub fn to_str_hex(&self) -> String {
-        let hex_string_x: String = cast::fq_to_hex_string(&self.x);
-        let hex_string_y: String = cast::fq_to_hex_string(&self.y);
+    // pub fn to_str_hex(&self) -> String {
+    //     let hex_string_x: String = cast::fq_to_hex_string(&self.x);
+    //     let hex_string_y: String = cast::fq_to_hex_string(&self.y);
 
-        format!("{}{}", hex_string_x, hex_string_y)
-    }
+    //     format!("{}{}", hex_string_x, hex_string_y)
+    // }
 }
