@@ -2,7 +2,7 @@
 name = "safecat"
 version = "0.1.0"
 edition = "2021"
-
+maintainer = "Neiman"
 
 [dependencies]
 ark-bn254 = "0.4.0"
@@ -17,12 +17,19 @@ num = "0.4.1"
 num-bigint = "0.4.4"
 poseidon-rs = "0.0.10"
 rand = "0.8.5"
-serde = {version = "1.0.193", features = ["derive"]}
+serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.118"
 sha2 = "0.10.8"
 chrono = {version = "0.4.38", features = ["serde"]}
 inquire = { version = "0.7.5", features = ["date"] }
 ark-serialize = { version = "0.4.2", features = ["derive"] }
 regex = "1.10.5"
+toml = "0.8.14"
 
-
+[package.metadata.deb]
+name = "Safecat"
+maintainer = "Neiman"
+copyright = "LGPL-3.0-or-later"
+assets = [
+    ["noir-examples/verify_human_certificates_for_address/*", "usr/share/safecat/noir-examples", "755"]
+]

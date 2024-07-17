@@ -1,13 +1,14 @@
 mod actions;
 mod ansi_cat;
-mod babyjubjub;
 mod bn254_scalar_cast;
 mod cast; // module for casting between types
-mod certificate;
 mod certificate_formats;
 mod cli;
+mod commands;
 mod consts;
+mod crypto_structures;
 mod io_utils;
+mod serialization;
 
 use clap::Parser; // Command Line Argument Parser
 use cli::{Cli, Commands};
@@ -32,7 +33,7 @@ fn main() -> Result<(), Error> {
         }
         Commands::SignField { format, field } => {
             println!("Signing field element: {}", field);
-            actions::sign_field(field.to_string(), format.to_string())
+            actions::sign_poseidon_hash(field.to_string(), format.to_string())
         }
         Commands::Verify {
             hash,
@@ -64,7 +65,10 @@ fn main() -> Result<(), Error> {
             certificate_type,
             _args,
         } => {
-            actions::attest(certificate_type.to_string())?;
+            commands::attest::attest(certificate_type.to_string())?;
+        }
+        Commands::Prove { what } => {
+            commands::prove::prove()?;
         }
     }
 

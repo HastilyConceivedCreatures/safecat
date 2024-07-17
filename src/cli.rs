@@ -69,4 +69,11 @@ pub enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         _args: Vec<String>,
     },
+
+    /// Shows keys
+    Prove {
+        // what to prove?
+        #[arg(long, value_parser = ["babyjubjub", "address"], default_value = "babyjubjub")]
+        what: String,
+    },
 }

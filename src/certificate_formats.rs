@@ -1,4 +1,4 @@
-use crate::certificate::{CertFormat, FieldTypeName, FormatField};
+use crate::crypto_structures::certificate::{CertFormat, FieldTypeName, FormatField};
 
 pub fn cert_format_woolball_pubkeybabyjubjub() -> CertFormat {
     let mut format = CertFormat {

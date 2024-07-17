@@ -5,10 +5,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 
 pub struct AnsiCat {
-    pub src: String,
     pub ansi_lines: Vec<String>,
-    pub x: usize,
-    pub y: usize,
 }
 
 impl AnsiCat {
@@ -16,29 +13,23 @@ impl AnsiCat {
         let ansi_lines = read_lines(&src).unwrap();
 
         let mut max_width = 0;
-        let mut height = 0;
+        // let mut height = 0;
 
         for line in &ansi_lines {
             // Strip ANSI codes for dimension calculation
             let stripped_line = strip_ansi_codes(line);
             let width = stripped_line.char_indices().count();
-            if width > 0 {
-                height += 1;
-            }
+            // if width > 0 {
+            //     height += 1;
+            // }
             if width > max_width {
                 max_width = width;
             }
         }
 
-        let x = max_width;
-        let y = height;
-
         // Create a new AnsiCat instance
         let cat = AnsiCat {
-            src: src,
             ansi_lines: ansi_lines,
-            x: x,
-            y: y,
         };
 
         Ok(cat)
