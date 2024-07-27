@@ -1,60 +1,12 @@
-use crate::{cast, consts, crypto_structures::babyjubjub, io_utils, Error};
+use crate::{
+    cast, consts,
+    crypto_structures::{babyjubjub, signature},
+    io_utils, Error,
+};
 
 use ark_std::str::FromStr;
-use babyjubjub_ark::{new_key, verify, Fq, Signature};
+use babyjubjub_ark::{verify, Fq};
 use poseidon_ark::Poseidon;
-
-// Generates a new private key and saves it to file
-pub fn generate(privkey_filename: &str) -> Result<(), Error> {
-    // Initialize a random number generator
-    let mut rng = rand::thread_rng();
-
-    // Generate a new private key
-    let private_key = new_key(&mut rng);
-
-    // Save keys to files
-    io_utils::save_private_key(privkey_filename, &private_key)?;
-
-    Ok(())
-}
-
-// Displays private and public keys based on the specified output format.
-pub fn show_keys(output_format: String) -> Result<(), Error> {
-    // Check if private key file exists
-    if !io_utils::file_exists("", "priv.key")? {
-        return Err("No key has been generated yet.".into());
-    }
-
-    // Load private key
-    let private_key = io_utils::load_private_key("priv.key")?;
-    let public_key = babyjubjub::Pubkey::from_point(private_key.public());
-
-    if output_format == "detailed" {
-        // Print private key detailed format
-        print!("private key: ");
-        io_utils::print_u8_array(&private_key.key, "dec");
-        println!("");
-
-        println!(
-            "public key Field X: {}",
-            cast::fq_to_dec_string(&public_key.x)
-        );
-        println!(
-            "public key Field Y: {}",
-            cast::fq_to_dec_string(&public_key.y)
-        );
-    } else if output_format == "hex" {
-        // Print private key hex format
-        print!("private key: ");
-        io_utils::print_u8_array(&private_key.key, "hex");
-        println!("");
-
-        // Print public key
-        print!("public key: {}", public_key.to_str_hex());
-    }
-
-    Ok(())
-}
 
 // Signs a message using BabyJubJub based on the specified hash algorithm and output format.
 pub fn sign(message_to_sign_string: String, hash_algorithm: String, output_format: String) {
@@ -72,19 +24,13 @@ pub fn sign(message_to_sign_string: String, hash_algorithm: String, output_forma
 
     if output_format == "detailed" {
         // Print signature
-        println!(
-            "Signature: R.X: {}",
-            cast::fq_to_dec_string(&signature.r_b8.x)
-        );
-        println!(
-            "Signature: R.Y: {}",
-            cast::fq_to_dec_string(&signature.r_b8.y)
-        );
+        println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.rx));
+        println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.ry));
         println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
     } else if output_format == "hex" {
         // change signature variables to hex
-        let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
-        let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
+        let signature_x_hex = cast::fq_to_hex_string(&signature.rx);
+        let signature_y_hex = cast::fq_to_hex_string(&signature.ry);
         let signature_s_hex = cast::fr_to_hex_string(&signature.s);
 
         println!(
@@ -111,19 +57,13 @@ pub fn sign_poseidon_hash(hash_to_sign_string: String, output_format: String) {
 
     if output_format == "detailed" {
         // Print signature
-        println!(
-            "Signature: R.X: {}",
-            cast::fq_to_dec_string(&signature.r_b8.x)
-        );
-        println!(
-            "Signature: R.Y: {}",
-            cast::fq_to_dec_string(&signature.r_b8.y)
-        );
+        println!("Signature: R.X: {}", cast::fq_to_dec_string(&signature.rx));
+        println!("Signature: R.Y: {}", cast::fq_to_dec_string(&signature.ry));
         println!("Signature: S: {}", cast::fr_to_dec_string(&signature.s));
     } else if output_format == "hex" {
         // change signature variables to hex
-        let signature_x_hex = cast::fq_to_hex_string(&signature.r_b8.x);
-        let signature_y_hex = cast::fq_to_hex_string(&signature.r_b8.y);
+        let signature_x_hex = cast::fq_to_hex_string(&signature.rx);
+        let signature_y_hex = cast::fq_to_hex_string(&signature.ry);
         let signature_s_hex = cast::fr_to_hex_string(&signature.s);
 
         println!(
@@ -202,7 +142,7 @@ fn calculate_hash_fq(message_to_verify_string: &str, hash_algorithm: &str) -> Fq
 fn sign_message(
     message_to_sign_string: String,
     hash_algorithm: String,
-) -> Result<(Signature, Fq), Error> {
+) -> Result<(signature::Signature, Fq), Error> {
     // calculate max message length for Poseidon hash
     const MAX_POSEIDON_MESSAGE_LEN: usize =
         consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
@@ -221,18 +161,16 @@ fn sign_message(
         return Err("No key has been generated yet.".into());
     }
 
-    let private_key = io_utils::load_private_key("priv.key")?;
+    let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
 
     // Sign the message
-    let signature: Signature = private_key
-        .sign(hash_fq)
-        .map_err(|e| format!("Failed to sign message: {}", e))?;
+    let signature: signature::Signature = private_key.sign(hash_fq)?;
 
     Ok((signature, hash_fq))
 }
 
 // Hashes a message and then signs it. Returns the signature and the hash.
-fn sign_poseidon_fq(fq_as_str: String) -> Result<(Signature, Fq), Error> {
+fn sign_poseidon_fq(fq_as_str: String) -> Result<(signature::Signature, Fq), Error> {
     let hash_fq = Fq::from_str(&*fq_as_str).unwrap();
 
     // Check if private key file exists
@@ -240,12 +178,10 @@ fn sign_poseidon_fq(fq_as_str: String) -> Result<(Signature, Fq), Error> {
         return Err("No key has been generated yet.".into());
     }
 
-    let private_key = io_utils::load_private_key("priv.key")?;
+    let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
 
     // Sign the message
-    let signature: Signature = private_key
-        .sign(hash_fq)
-        .map_err(|e| format!("Failed to sign message: {}", e))?;
+    let signature: signature::Signature = private_key.sign(hash_fq)?;
 
     Ok((signature, hash_fq))
 }

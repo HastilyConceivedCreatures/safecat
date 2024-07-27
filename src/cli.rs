@@ -10,14 +10,6 @@ pub struct Cli {
     pub command: Commands,
 }
 
-fn cat_is_talking_now() -> &'static str {
-    let cat = AnsiCat::load("src/ansi_cat/ansi_cat.ansi".to_string()).unwrap();
-
-    let sentence = io_utils::read_random_line("src/ansi_cat/help_sentences.txt").unwrap();
-
-    cat.talk(9, 2, sentence)
-}
-
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Generates a private key
@@ -76,4 +68,13 @@ pub enum Commands {
         #[arg(long, value_parser = ["babyjubjub", "address"], default_value = "babyjubjub")]
         what: String,
     },
+}
+
+/// Loads an ANSI cat and makes it talk a random sentence from a file.
+fn cat_is_talking_now() -> &'static str {
+    let cat = AnsiCat::load("src/ansi_cat/ansi_cat.ansi".to_string()).unwrap();
+
+    let sentence = io_utils::read_random_line("src/ansi_cat/help_sentences.txt").unwrap();
+
+    cat.talk(9, 2, sentence)
 }

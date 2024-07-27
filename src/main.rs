@@ -13,6 +13,7 @@ mod serialization;
 use clap::Parser; // Command Line Argument Parser
 use cli::{Cli, Commands};
 
+// Type alias for a boxed dynamic error trait object, accessible within the crate.
 pub(crate) type Error = Box<dyn std::error::Error>;
 
 fn main() -> Result<(), Error> {
@@ -20,8 +21,8 @@ fn main() -> Result<(), Error> {
 
     // Match the subcommand and execute the corresponding logic
     match &cli.command {
-        Commands::Generate => actions::generate("priv.key")?,
-        Commands::ShowKeys { format } => actions::show_keys(format.to_string())?,
+        Commands::Generate => commands::generate::generate(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME)?,
+        Commands::ShowKeys { format } => commands::show_keys::show_keys(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME, format)?,
         Commands::Sign {
             hash,
             format,

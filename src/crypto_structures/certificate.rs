@@ -14,7 +14,7 @@ pub enum FieldType {
     Name(String),
     Timestamp(DateTime<Utc>),
     Age(u32),
-    BabyjubjubPubkey(babyjubjub::Pubkey),
+    BabyjubjubPubkey(babyjubjub::PubKey),
     WoolballName(WoolballName),
     EVMAddress(String),
 }
@@ -221,7 +221,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                     bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
 
                 // validate public key input and split it into x and y
-                let babyjubjub_pubkey: babyjubjub::Pubkey = babyjubjub::Pubkey {
+                let babyjubjub_pubkey: babyjubjub::PubKey = babyjubjub::PubKey {
                     x: pubkey_vec[0],
                     y: pubkey_vec[1],
                 };
@@ -265,8 +265,8 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
 
                 // Create BabyjubjubPubkey from hex string
-                let babyjubjub_pubkey: babyjubjub::Pubkey =
-                    babyjubjub::Pubkey::from_str_hex(pubkey_hex_str);
+                let babyjubjub_pubkey: babyjubjub::PubKey =
+                    babyjubjub::PubKey::from_str_hex(pubkey_hex_str);
 
                 // create certificate field
                 let cert_field = CertField {
@@ -338,4 +338,78 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
     cert.expiration = expiration_utc;
 
     cert
+}
+
+impl FieldType {
+    pub fn is_name(&self) -> bool {
+        matches!(self, FieldType::Name(_))
+    }
+
+    pub fn as_name(&self) -> Option<&String> {
+        if let FieldType::Name(name) = self {
+            Some(name)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_timestamp(&self) -> bool {
+        matches!(self, FieldType::Timestamp(_))
+    }
+
+    pub fn as_timestamp(&self) -> Option<&DateTime<Utc>> {
+        if let FieldType::Timestamp(timestamp) = self {
+            Some(timestamp)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_age(&self) -> bool {
+        matches!(self, FieldType::Age(_))
+    }
+
+    pub fn as_age(&self) -> Option<u32> {
+        if let FieldType::Age(age) = self {
+            Some(*age)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_babyjubjub_pubkey(&self) -> bool {
+        matches!(self, FieldType::BabyjubjubPubkey(_))
+    }
+
+    pub fn as_babyjubjub_pubkey(&self) -> Option<&babyjubjub::PubKey> {
+        if let FieldType::BabyjubjubPubkey(pubkey) = self {
+            Some(pubkey)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_woolball_name(&self) -> bool {
+        matches!(self, FieldType::WoolballName(_))
+    }
+
+    pub fn as_woolball_name(&self) -> Option<&WoolballName> {
+        if let FieldType::WoolballName(woolball_name) = self {
+            Some(woolball_name)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_evm_address(&self) -> bool {
+        matches!(self, FieldType::EVMAddress(_))
+    }
+
+    pub fn as_evm_address(&self) -> Option<&String> {
+        if let FieldType::EVMAddress(evm_address) = self {
+            Some(evm_address)
+        } else {
+            None
+        }
+    }
 }

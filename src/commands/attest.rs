@@ -1,6 +1,6 @@
 use crate::{
     certificate_formats,
-    crypto_structures::{certificate, signature::Signature},
+    crypto_structures::{certificate, signature::SignatureAndSigner},
     io_utils, Error,
 };
 
@@ -20,10 +20,10 @@ pub fn attest(format: String) -> Result<(), Error> {
     let cert_hash = cert.poseidon_hash();
 
     // sign certificate
-    let signature = Signature::sign_hash(cert_hash).unwrap();
+    let signature_and_signer = SignatureAndSigner::sign_hash(cert_hash).unwrap();
 
     // save certificate to disk
-    let filename = io_utils::save_certificate(cert, signature);
+    let filename = io_utils::save_certificate(cert, signature_and_signer);
 
     println!("The certificate was saved to file: {}", filename?);
 

@@ -133,7 +133,7 @@ pub fn message_to_bn254_vec(message: &str) -> Result<BN254R, Error> {
     let poseidon = Poseidon::new();
 
     // // Hash the input vector
-    Ok(poseidon.hash(fr_vector).unwrap())
+    Ok(poseidon.hash(fr_vector)?)
 }
 
 pub fn babyjubjub_pubkey_to_bn254(pubkey: &str) -> Result<Vec<BN254R>, Error> {
@@ -149,8 +149,19 @@ pub fn babyjubjub_pubkey_to_bn254(pubkey: &str) -> Result<Vec<BN254R>, Error> {
 }
 
 pub fn evm_address_to_bn254(hex_address: &str) -> Result<BN254R, Error> {
-    let address_dec = cast::hex_to_dec(&hex_address).unwrap();
+    let address_dec = cast::hex_to_dec(&hex_address)?;
     let address_bn254 = BN254R::from_str(&*address_dec).unwrap();
 
     Ok(address_bn254)
+}
+
+pub fn bn254r_to_dec_str(bn254r_element: &BN254R) -> String {
+    // convert to a decimal string
+    let bn254r_element_string = bn254r_element.to_string();
+
+    // Parse the decimal string into a hex
+    let bn254r_element_decimal = BigUint::parse_bytes(bn254r_element_string.as_bytes(), 10).unwrap();
+
+    // return the hex string
+    bn254r_element_decimal.to_string()
 }

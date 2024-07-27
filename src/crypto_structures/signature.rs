@@ -18,32 +18,33 @@ pub struct Signature {
     pub rx: BN254R,
     #[serde(serialize_with = "ark_se", deserialize_with = "ark_de")]
     pub ry: BN254R,
-    pub signer: babyjubjub::Pubkey,
 }
 
-impl Signature {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SignatureAndSigner {
+    pub signature: Signature,
+    pub signer: babyjubjub::PubKey,
+}
+
+impl SignatureAndSigner {
     // Signs a hash. Returns a signature struct
-    pub fn sign_hash(hash_bn254: BN254R) -> Result<Signature, Error> {
+    pub fn sign_hash(hash_bn254: BN254R) -> Result<SignatureAndSigner, Error> {
         // Check if private key file exists
         if !io_utils::file_exists("", "priv.key")? {
             return Err("No key has been generated yet.".into());
         }
 
         // Load private key from file
-        let private_key = io_utils::load_private_key("priv.key")?;
+        let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
 
         // Sign the hash
-        let signature_components: SignatureComponent = private_key
-            .sign(hash_bn254)
-            .map_err(|e| format!("Failed to sign message: {}", e))?;
+        let signature: Signature = private_key.sign(hash_bn254)?;
 
-        let signature = Signature {
-            s: signature_components.s,
-            rx: signature_components.r_b8.x,
-            ry: signature_components.r_b8.y,
-            signer: babyjubjub::Pubkey::from_point(private_key.public()),
+        let signature_and_signer = SignatureAndSigner {
+            signature: signature,
+            signer: private_key.public(),
         };
 
-        Ok(signature)
+        Ok(signature_and_signer)
     }
 }

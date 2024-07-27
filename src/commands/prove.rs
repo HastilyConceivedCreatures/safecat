@@ -1,7 +1,11 @@
+use crate::cast;
 use crate::crypto_structures::{
     babyjubjub,
     certificate::{Cert, FieldType},
+    signature::SignatureAndSigner,
 };
+
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
@@ -14,8 +18,8 @@ pub fn prove() -> io::Result<()> {
     let certs_path = Path::new("certs/received");
     let files = fs::read_dir(certs_path)?;
 
-    let mut found_cert: Option<Cert> = None;
-    let mut found_signature: Option<Signature> = None;
+    let mut found_cert_option: Option<Cert> = None;
+    let mut found_signature_option: Option<SignatureAndSigner> = None;
 
     // Step 2: Read type of each file until it finds a file where type is "birth"
     for file in files {
@@ -28,15 +32,16 @@ pub fn prove() -> io::Result<()> {
                 let cert: Cert = serde_json::from_str(&first_line).unwrap();
                 if cert.cert_type == "babyjubjub" {
                     // Store the cert to be used outside the loop
-                    found_cert = Some(cert);
+                    found_cert_option = Some(cert);
 
                     // Deserialize the second line into Signature
                     if let Some(Ok(second_line)) = lines.next() {
-                        let signature: Signature = serde_json::from_str(&second_line).unwrap();
+                        let signature: SignatureAndSigner =
+                            serde_json::from_str(&second_line).unwrap();
                         println!("Deserialized Signature: {:?}", signature);
 
                         // Store the signature to be used outside the loop
-                        found_signature = Some(signature);
+                        found_signature_option = Some(signature);
                     }
 
                     break;
@@ -45,17 +50,11 @@ pub fn prove() -> io::Result<()> {
         }
     }
 
+    let found_cert = found_cert_option.unwrap();
+    let found_signature = found_signature_option.unwrap();
+
     // Extract details from Cert
-    let mut signer_id = "".to_string();
-    match &found_cert.unwrap().to[0].field {
-        FieldType::BabyjubjubPubkey(pubkey) => {
-            signer_id = pubkey.to_str_hex();
-        }
-        _ => {
-            // Handle other variants or do nothing
-            println!("error");
-        }
-    }
+    let signer_id = found_signature.signer.to_hex_str();
 
     // Read the JSON data
     let trust_kernel_json =
@@ -70,26 +69,28 @@ pub fn prove() -> io::Result<()> {
         .find(|m| m.name.to_lowercase() == signer_id.to_lowercase());
 
     if let Some(member) = member_opt {
-        // Read the TOML template
-        let mut prover: Prover = toml::from_str(
-            &fs::read_to_string("data/prover-one-cert-path-2.toml")
-                .expect("Unable to read prover-one-cert-path-2.toml"),
-        )
-        .expect("TOML was not well-formatted");
-
         // Fill in the member data
-        prover.trust_kernel_root = trust_kernel.root.clone();
-        prover.signers = vec![Signer {
-            x: member.x.clone(),
-            y: member.y.clone(),
-        }];
-        prover.signers_hash_path = vec![SignersHashPath {
-            index: member.index.to_string(),
-            path: member.path.clone(),
-        }];
+        let mut prover = Prover {
+            trust_kernel_root: trust_kernel.root,
+            last_checked_timestamp: Utc::now().timestamp().to_string(),
+            expiration: found_cert.expiration.timestamp().to_string(),
+            birthdate: found_cert.body[0]
+                .field
+                .as_timestamp()
+                .unwrap()
+                .timestamp()
+                .to_string(),
+            person: *found_cert.to[0].field.as_babyjubjub_pubkey().unwrap(),
+            signatures: vec![found_signature],
+            signers_hash_path: vec![SignersHashPath {
+                index: member.index,
+                path: member.path.clone(),
+            }],
+        };
 
         // Serialize to TOML and write to output file
-        let toml_string = toml::to_string_pretty(&prover).expect("Failed to serialize TOML");
+        let prover_toml = prover.toToml();
+        let toml_string = toml::to_string_pretty(&prover_toml).expect("Failed to serialize TOML");
         fs::write("output/prover.toml", toml_string).expect("Unable to write prover.toml");
 
         println!("Successfully wrote prover.toml");
@@ -106,7 +107,7 @@ struct TrustKernel {
     members: Vec<Member>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Member {
     name: String,
     x: String,
@@ -115,15 +116,65 @@ struct Member {
     path: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 struct Prover {
     trust_kernel_root: String,
     last_checked_timestamp: String,
     expiration: String,
     birthdate: String,
+    person: babyjubjub::PubKey,
+    signatures: Vec<SignatureAndSigner>,
+    signers_hash_path: Vec<SignersHashPath>,
+}
+
+impl Prover {
+    pub fn toToml(&mut self) -> ProverToml {
+        let person = Person {
+            x: cast::fq_to_hex_string(&self.person.x),
+            y: cast::fq_to_hex_string(&self.person.y),
+        };
+
+        let mut signatures: Vec<SignatureToml> = vec![];
+        let mut signers: Vec<Person> = vec![];
+
+        for signature_and_signer in self.signatures.iter_mut() {
+            let signatureToml = SignatureToml {
+                s: cast::fr_to_hex_string(&signature_and_signer.signature.s),
+                rx: cast::fq_to_hex_string(&signature_and_signer.signature.rx),
+                ry: cast::fq_to_hex_string(&signature_and_signer.signature.ry),
+            };
+
+            let signerTolm = Person {
+                x: cast::fq_to_hex_string(&signature_and_signer.signer.x),
+                y: cast::fq_to_hex_string(&signature_and_signer.signer.y),
+            };
+
+            signatures.push(signatureToml);
+            signers.push(signerTolm);
+        }
+
+        ProverToml {
+            trust_kernel_root: self.trust_kernel_root.clone(),
+            last_checked_timestamp: self.last_checked_timestamp.clone(),
+            expiration: self.expiration.clone(),
+            birthdate: self.birthdate.clone(),
+            person: person,
+            signatures: signatures,
+            signers: signers,
+            signers_hash_path: self.signers_hash_path.clone(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ProverToml {
+    trust_kernel_root: String,
+    last_checked_timestamp: String,
+    expiration: String,
+    birthdate: String,
     person: Person,
-    signature: Vec<Signature>,
-    signers: Vec<Signer>,
+    signatures: Vec<SignatureToml>,
+    signers: Vec<Person>,
     signers_hash_path: Vec<SignersHashPath>,
 }
 
@@ -134,7 +185,7 @@ struct Person {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Signature {
+struct SignatureToml {
     s: String,
     rx: String,
     ry: String,
@@ -146,8 +197,8 @@ struct Signer {
     y: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct SignersHashPath {
-    index: String,
+    index: u32,
     path: Vec<String>,
 }
