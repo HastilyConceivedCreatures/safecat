@@ -1,7 +1,6 @@
-use crate::cast;
 use crate::crypto_structures::{
     babyjubjub,
-    certificate::{Cert, FieldType},
+    certificate::Cert,
     signature::SignatureAndSigner,
 };
 
@@ -89,7 +88,7 @@ pub fn prove() -> io::Result<()> {
         };
 
         // Serialize to TOML and write to output file
-        let prover_toml = prover.toToml();
+        let prover_toml = prover.to_toml();
         let toml_string = toml::to_string_pretty(&prover_toml).expect("Failed to serialize TOML");
         fs::write("output/prover.toml", toml_string).expect("Unable to write prover.toml");
 
@@ -128,29 +127,29 @@ struct Prover {
 }
 
 impl Prover {
-    pub fn toToml(&mut self) -> ProverToml {
+    pub fn to_toml(&mut self) -> ProverToml {
         let person = Person {
-            x: cast::fq_to_hex_string(&self.person.x),
-            y: cast::fq_to_hex_string(&self.person.y),
+            x: babyjubjub::fq_to_hex_str(&self.person.x),
+            y: babyjubjub::fq_to_hex_str(&self.person.y),
         };
 
         let mut signatures: Vec<SignatureToml> = vec![];
         let mut signers: Vec<Person> = vec![];
 
         for signature_and_signer in self.signatures.iter_mut() {
-            let signatureToml = SignatureToml {
-                s: cast::fr_to_hex_string(&signature_and_signer.signature.s),
-                rx: cast::fq_to_hex_string(&signature_and_signer.signature.rx),
-                ry: cast::fq_to_hex_string(&signature_and_signer.signature.ry),
+            let signature_toml = SignatureToml {
+                s: babyjubjub::fr_to_hex_string(&signature_and_signer.signature.s),
+                rx: babyjubjub::fq_to_hex_str(&signature_and_signer.signature.rx),
+                ry: babyjubjub::fq_to_hex_str(&signature_and_signer.signature.ry),
             };
 
-            let signerTolm = Person {
-                x: cast::fq_to_hex_string(&signature_and_signer.signer.x),
-                y: cast::fq_to_hex_string(&signature_and_signer.signer.y),
+            let signer_toml = Person {
+                x: babyjubjub::fq_to_hex_str(&signature_and_signer.signer.x),
+                y: babyjubjub::fq_to_hex_str(&signature_and_signer.signer.y),
             };
 
-            signatures.push(signatureToml);
-            signers.push(signerTolm);
+            signatures.push(signature_toml);
+            signers.push(signer_toml);
         }
 
         ProverToml {

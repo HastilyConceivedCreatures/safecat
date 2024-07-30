@@ -1,7 +1,7 @@
 pub use ark_bn254::Fr as BN254R;
 use chrono::{DateTime, Utc};
 
-use crate::{bn254_scalar_cast, cast, crypto_structures::babyjubjub};
+use crate::{cast, crypto_structures::babyjubjub};
 use chrono::{Months, NaiveDate};
 use inquire::{formatter::DEFAULT_DATE_FORMATTER, CustomType, Text};
 use poseidon_ark::Poseidon;
@@ -83,7 +83,7 @@ impl Cert {
     fn to_bn254r_vector(&self) -> Vec<BN254R> {
         let mut cert_vec: Vec<BN254R> = vec![];
 
-        cert_vec.push(bn254_scalar_cast::message_to_bn254_vec(&self.cert_type).unwrap());
+        cert_vec.push(babyjubjub::message_to_fq_vec(&self.cert_type).unwrap());
 
         for cert_field in &self.to {
             let field = &cert_field.field;
@@ -92,14 +92,14 @@ impl Cert {
                     cert_vec.append(&mut woolball_name.to_bn254r_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
-                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
+                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
 
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
 
                 FieldType::EVMAddress(ref evm_address) => {
                     let evm_address_bn254 =
-                        bn254_scalar_cast::evm_address_to_bn254(&evm_address).unwrap();
+                        babyjubjub::evm_address_to_fq(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
@@ -117,19 +117,19 @@ impl Cert {
                     cert_vec.append(&mut woolball_name.to_bn254r_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
-                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_bn254_r();
+                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
 
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
                 FieldType::EVMAddress(ref evm_address) => {
                     let evm_address_bn254 =
-                        bn254_scalar_cast::evm_address_to_bn254(&evm_address).unwrap();
+                    babyjubjub::evm_address_to_fq(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
                 FieldType::Timestamp(ref timestamp) => {
                     let timestamp_bn254r =
-                        bn254_scalar_cast::datetime_utc_to_bn254(*timestamp).unwrap();
+                        babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
 
                     cert_vec.push(timestamp_bn254r);
                 }
@@ -145,7 +145,7 @@ impl Cert {
             }
         }
 
-        let expiratio_bn254r = bn254_scalar_cast::datetime_utc_to_bn254(self.expiration).unwrap();
+        let expiratio_bn254r = babyjubjub::datetime_utc_to_fq(self.expiration).unwrap();
 
         let mut expiration_bn254r_vec = vec![expiratio_bn254r];
 
@@ -184,7 +184,7 @@ pub struct WoolballName {
 
 impl WoolballName {
     pub fn id(&self) -> BN254R {
-        bn254_scalar_cast::woolball_name_to_bn254(&self.name).unwrap()
+        babyjubjub::woolball_name_to_fq(&self.name).unwrap()
     }
 
     pub fn to_bn254r_vec(&self) -> Vec<BN254R> {
@@ -216,15 +216,12 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 // Promptfor pubkey
                 let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
 
-                // Cast pubkey from hex string to vec of BN245R
-                let pubkey_vec =
-                    bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
+                // // Cast pubkey from hex string to vec of BN245R
+                // let pubkey_vec =
+                //     bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
 
                 // validate public key input and split it into x and y
-                let babyjubjub_pubkey: babyjubjub::PubKey = babyjubjub::PubKey {
-                    x: pubkey_vec[0],
-                    y: pubkey_vec[1],
-                };
+                let babyjubjub_pubkey: babyjubjub::PubKey = babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
 
                 let cert_field = CertField {
                     metadata: field,
@@ -266,7 +263,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
 
                 // Create BabyjubjubPubkey from hex string
                 let babyjubjub_pubkey: babyjubjub::PubKey =
-                    babyjubjub::PubKey::from_str_hex(pubkey_hex_str);
+                    babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
 
                 // create certificate field
                 let cert_field = CertField {

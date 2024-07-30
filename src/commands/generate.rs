@@ -1,4 +1,4 @@
-use crate::{crypto_structures::babyjubjub, io_utils, Error, consts};
+use crate::{crypto_structures::babyjubjub, Error, consts};
 
 // Generates a new private key and saves it to file
 pub fn generate(folder_path: &str, privkey_filename: &str) -> Result<(), Error> {

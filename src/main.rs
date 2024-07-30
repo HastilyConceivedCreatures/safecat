@@ -1,6 +1,4 @@
-mod actions;
 mod ansi_cat;
-mod bn254_scalar_cast;
 mod cast; // module for casting between types
 mod certificate_formats;
 mod cli;
@@ -24,30 +22,27 @@ fn main() -> Result<(), Error> {
         Commands::Generate => commands::generate::generate(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME)?,
         Commands::ShowKeys { format } => commands::show_keys::show_keys(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME, format)?,
         Commands::Sign {
-            hash,
             format,
             message,
             _args,
         } => {
             println!("Signing {}", message);
-            actions::sign(message.to_string(), hash.to_string(), format.to_string())
+            commands::sign::sign_and_print_message(message.to_string(), format.to_string())?
         }
         Commands::SignField { format, field } => {
             println!("Signing field element: {}", field);
-            actions::sign_poseidon_hash(field.to_string(), format.to_string())
+            commands::sign::sign_and_print_babyjubjub_fq(field.to_string(), format.to_string())?
         }
         Commands::Verify {
-            hash,
             message,
             signature,
             public_key,
         } => {
             println!("Verifying {}", message);
-            actions::verify_signature(
+            commands::sign::verify_signature(
                 message.to_string(),
                 signature.to_string(),
                 public_key.to_string(),
-                hash.to_string(),
             )?
         }
         Commands::ShowCerts {

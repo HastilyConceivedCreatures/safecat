@@ -1,4 +1,4 @@
-use crate::{crypto_structures::babyjubjub, Error, bn254_scalar_cast};
+use crate::{crypto_structures::babyjubjub, Error};
 
 // Displays private and public keys based on the specified output format.
 pub fn show_keys(folder_path: &str, privkey_filename: &str, output_format: &str) -> Result<(), Error> {
@@ -19,11 +19,11 @@ pub fn show_keys(folder_path: &str, privkey_filename: &str, output_format: &str)
         // Print public key fields in detailed format
         println!(
             "public key Field X: {}",
-            bn254_scalar_cast::bn254r_to_dec_str(&public_key.x)
+            babyjubjub::fq_to_dec_str(&public_key.x)
         );
         println!(
             "public key Field Y: {}",
-            bn254_scalar_cast::bn254r_to_dec_str(&public_key.y)
+            babyjubjub::fq_to_dec_str(&public_key.y)
         );
     } else if output_format == "hex" {
         // Print private key in hex format

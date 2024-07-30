@@ -6,8 +6,8 @@ use crate::{
     serialization::{ark_de, ark_se},
     Error,
 };
-use ark_bn254::Fr as BN254R;
-use babyjubjub_ark::{Fr, Signature as SignatureComponent};
+use ark_bn254::Fr as Fq;
+use babyjubjub_ark::Fr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,9 +15,9 @@ pub struct Signature {
     #[serde(serialize_with = "ark_se", deserialize_with = "ark_de")]
     pub s: Fr,
     #[serde(serialize_with = "ark_se", deserialize_with = "ark_de")]
-    pub rx: BN254R,
+    pub rx: Fq,
     #[serde(serialize_with = "ark_se", deserialize_with = "ark_de")]
-    pub ry: BN254R,
+    pub ry: Fq,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ pub struct SignatureAndSigner {
 
 impl SignatureAndSigner {
     // Signs a hash. Returns a signature struct
-    pub fn sign_hash(hash_bn254: BN254R) -> Result<SignatureAndSigner, Error> {
+    pub fn sign_hash(hash_bn254: Fq) -> Result<SignatureAndSigner, Error> {
         // Check if private key file exists
         if !io_utils::file_exists("", "priv.key")? {
             return Err("No key has been generated yet.".into());

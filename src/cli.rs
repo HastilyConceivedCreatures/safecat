@@ -23,8 +23,6 @@ pub enum Commands {
 
     /// Sign a message using BabyJubJub
     Sign {
-        #[arg(long, value_parser = ["poseidon", "sha256"], default_value = "poseidon")]
-        hash: String,
         #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed")]
         format: String,
         message: String,
@@ -41,8 +39,6 @@ pub enum Commands {
 
     /// Verify a message using BabyJubJub
     Verify {
-        #[arg(long, value_parser = ["poseidon", "sha256"], default_value = "poseidon")]
-        hash: String,
         message: String,
         signature: String,
         public_key: String,

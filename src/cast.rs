@@ -1,11 +1,10 @@
 /* Collection of castings functions */
-use crate::{bn254_scalar_cast, consts, Error};
+use crate::{consts, crypto_structures::babyjubjub, Error};
 
 use ark_ff::PrimeField as ArkPF;
 use babyjubjub_ark::{Fq, Fr, Point, Signature};
 use num::{BigInt, Num};
 use num_bigint::BigUint;
-use sha2::{Digest, Sha256};
 
 pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
     // Catch string errors
@@ -18,8 +17,8 @@ pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
     let (x_string_hex, y_string_hex) = key_string_hex.split_at(64);
 
     // Parse hex strings into BigUint
-    let x = bn254_scalar_cast::hex_to_bn254_r(x_string_hex)?;
-    let y = bn254_scalar_cast::hex_to_bn254_r(y_string_hex)?;
+    let x = babyjubjub::hex_to_fq(x_string_hex)?;
+    let y = babyjubjub::hex_to_fq(y_string_hex)?;
 
     Ok(Point { x, y })
 }
@@ -36,8 +35,8 @@ pub fn signature_from_str(signature_string_hex: &str) -> Result<Signature, Error
     let (y_string_hex, s_string_hex) = temp.split_at(64);
 
     // convert hex to Fq
-    let x = bn254_scalar_cast::hex_to_bn254_r(x_string_hex)?;
-    let y = bn254_scalar_cast::hex_to_bn254_r(y_string_hex)?;
+    let x = babyjubjub::hex_to_fq(x_string_hex)?;
+    let y = babyjubjub::hex_to_fq(y_string_hex)?;
 
     // Parse hex strings into BigUint
     let s_decimal = BigUint::from_str_radix(s_string_hex, 16)?;
@@ -48,65 +47,6 @@ pub fn signature_from_str(signature_string_hex: &str) -> Result<Signature, Error
     let r_b8 = Point { x, y };
 
     Ok(Signature { r_b8, s })
-}
-
-pub fn fq_to_hex_string(num: &Fq) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-    let num_hex_string = format!("{:0>64x}", num_decimal);
-
-    // return the hex string
-    num_hex_string
-}
-
-pub fn fq_to_dec_string(num: &Fq) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-
-    // return the hex string
-    num_decimal.to_string()
-}
-
-pub fn fr_to_hex_string(num: &Fr) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-    let num_hex_string = format!("{:0>64x}", num_decimal);
-
-    // return the hex string
-    num_hex_string
-}
-
-pub fn fr_to_dec_string(num: &Fr) -> String {
-    // convert to a decimal string
-    let num_string = num.to_string();
-
-    // Parse the decimal string into a hex
-    let num_decimal = BigUint::parse_bytes(num_string.as_bytes(), 10).unwrap();
-
-    // return the hex string
-    num_decimal.to_string()
-}
-
-pub fn hash256_as_string(message: &str) -> String {
-    // create hash of the message
-    let mut hasher = Sha256::new();
-    hasher.update(message.as_bytes());
-    let hashed_message = hasher.finalize();
-
-    //Convert the hash result to a BigInt<4> -> hex string -> fq
-    let hashed_message_bigint = hash_to_bigint(&hashed_message[..]);
-    let hashed_message_string = hashed_message_bigint.to_str_radix(10);
-
-    hashed_message_string
 }
 
 pub fn hex_to_dec(hex_str: &str) -> Result<String, Error> {
