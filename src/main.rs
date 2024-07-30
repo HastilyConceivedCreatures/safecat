@@ -45,18 +45,6 @@ fn main() -> Result<(), Error> {
                 public_key.to_string(),
             )?
         }
-        Commands::ShowCerts {
-            certificates_folder,
-        } => {
-            let certificates_folder_path;
-            if certificates_folder == "created" {
-                certificates_folder_path = "certs/created";
-            } else {
-                certificates_folder_path = "certs/received"
-            }
-            io_utils::show_certs(certificates_folder_path)
-                .map_err(|e| format!("Error showing certificates: {}", e))?;
-        }
         Commands::Attest {
             certificate_type,
             _args,

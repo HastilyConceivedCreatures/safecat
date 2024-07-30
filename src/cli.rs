@@ -44,12 +44,6 @@ pub enum Commands {
         public_key: String,
     },
 
-    /// Show existing certificates
-    ShowCerts {
-        #[arg(value_parser = ["created", "received"])]
-        certificates_folder: String,
-    },
-
     /// Create a certification from an assertation
     Attest {
         #[arg(long, value_parser = ["babyjubjub", "babyjubjub-evmaddres", "babyjubjub-woolball"], default_value = "babyjubjub")]
