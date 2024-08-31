@@ -62,7 +62,7 @@ pub fn sign_and_print_babyjubjub_fq(hash_to_sign_string: String, output_format: 
 }
 
 // Hashes a message and then signs it. Returns the signature and the hash.
-fn sign_message(
+pub fn sign_message(
     message_to_sign_string: String,
 ) -> Result<(signature::Signature, Fq), Error> {
     // calculate max message length for Poseidon hash
@@ -78,12 +78,14 @@ fn sign_message(
 
     let hash_fq = poseidon_message(&message_to_sign_string);
 
+    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+
     // Check if private key file exists
-    if !io_utils::file_exists("", "priv.key")? {
+    if !io_utils::file_exists(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)? {
         return Err("No key has been generated yet.".into());
     }
 
-    let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
+    let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
     // Sign the message
     let signature: signature::Signature = private_key.sign(hash_fq)?;

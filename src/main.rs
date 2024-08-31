@@ -1,6 +1,5 @@
 mod ansi_cat;
 mod cast; // module for casting between types
-mod certificate_formats;
 mod cli;
 mod commands;
 mod consts;
@@ -51,8 +50,8 @@ fn main() -> Result<(), Error> {
         } => {
             commands::attest::attest(certificate_type.to_string())?;
         }
-        Commands::Prove { what } => {
-            commands::prove::prove()?;
+        Commands::Prove { what, to_whom} => {
+            commands::prove::prove(what, to_whom)?;
         }
     }
 

@@ -1,4 +1,4 @@
-pub use ark_bn254::Fr as BN254R;
+pub use ark_bn254::Fr as Fq;
 use chrono::{DateTime, Utc};
 
 use crate::{cast, crypto_structures::babyjubjub};
@@ -8,7 +8,7 @@ use poseidon_ark::Poseidon;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// Enum representing various types of fields that can be used in a certificate.
+/// Represents various types of fields that can be used in a certificate.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FieldType {
     Name(String),
@@ -19,7 +19,9 @@ pub enum FieldType {
     EVMAddress(String),
 }
 
-/// Enum representing the names of the various field types.
+/// Represents the names of the various FieldType without holding any data.
+/// This enum is useful for defining field types in formats without specifying values.
+/// Make sure that this enum stays synchronized with FieldType to avoid mismatches.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FieldTypeName {
     Timestamp,
@@ -29,7 +31,7 @@ pub enum FieldTypeName {
     EVMAddress,
 }
 
-/// Struct representing a field in a Format with a name and a type.
+/// Represents a field in a Format with a name, description and type.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FormatField {
     /// The name of the field.
@@ -40,7 +42,7 @@ pub struct FormatField {
     pub ftype: FieldTypeName,
 }
 
-/// Struct representing the format of a certificate with fields for the recipient and the body.
+/// Represents the format of a certificate with fields for the recipient and the body.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CertFormat {
     /// A vector of format for the recipient, usually it's a format of an ID.
@@ -49,16 +51,16 @@ pub struct CertFormat {
     pub body: Vec<FormatField>,
 }
 
-/// Struct representing a field within a certificate.
+/// Represents a field within a certificate.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CertField {
-    /// The name of the field.
-    pub metadata: FormatField,
+    /// Name, description and type of the field.
+    pub format_field: FormatField,
     /// The value of the field.
     pub field: FieldType,
 }
 
-/// Struct representing a certificate with recipient fields,
+/// Represents a certificate with recipient fields,
 /// body fields, and an expiration time.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cert {
@@ -73,15 +75,17 @@ pub struct Cert {
 }
 
 impl Cert {
-    pub fn poseidon_hash(&self) -> BN254R {
+    pub fn poseidon_hash(&self) -> Fq {
         let poseidon_ark = Poseidon::new();
-        let hash_fq = poseidon_ark.hash(self.to_bn254r_vector()).unwrap();
+
+        let hash_fq = poseidon_ark.hash(self.to_fq_vector()).unwrap();
 
         hash_fq
     }
 
-    fn to_bn254r_vector(&self) -> Vec<BN254R> {
-        let mut cert_vec: Vec<BN254R> = vec![];
+    // Represent a certificate as a vector for Fq elements. It makes it easier to work with in snarks
+    fn to_fq_vector(&self) -> Vec<Fq> {
+        let mut cert_vec: Vec<Fq> = vec![];
 
         cert_vec.push(babyjubjub::message_to_fq_vec(&self.cert_type).unwrap());
 
@@ -89,7 +93,7 @@ impl Cert {
             let field = &cert_field.field;
             match field {
                 FieldType::WoolballName(ref woolball_name) => {
-                    cert_vec.append(&mut woolball_name.to_bn254r_vec());
+                    cert_vec.append(&mut woolball_name.to_fq_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
@@ -114,7 +118,7 @@ impl Cert {
             let field = &cert_field.field;
             match field {
                 FieldType::WoolballName(ref woolball_name) => {
-                    cert_vec.append(&mut woolball_name.to_bn254r_vec());
+                    cert_vec.append(&mut woolball_name.to_fq_vec());
                 }
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
@@ -128,15 +132,15 @@ impl Cert {
                     cert_vec.push(evm_address_bn254);
                 }
                 FieldType::Timestamp(ref timestamp) => {
-                    let timestamp_bn254r =
+                    let timestamp_fq =
                         babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
 
-                    cert_vec.push(timestamp_bn254r);
+                    cert_vec.push(timestamp_fq);
                 }
                 FieldType::Age(ref age) => {
-                    let age_bn254r = BN254R::from(*age);
+                    let age_fq = Fq::from(*age);
 
-                    cert_vec.push(age_bn254r);
+                    cert_vec.push(age_fq);
                 }
 
                 _ => {
@@ -145,11 +149,11 @@ impl Cert {
             }
         }
 
-        let expiratio_bn254r = babyjubjub::datetime_utc_to_fq(self.expiration).unwrap();
+        let expiratio_fq = babyjubjub::datetime_utc_to_fq(self.expiration).unwrap();
 
-        let mut expiration_bn254r_vec = vec![expiratio_bn254r];
+        let mut expiration_fq_vec = vec![expiratio_fq];
 
-        cert_vec.append(&mut expiration_bn254r_vec);
+        cert_vec.append(&mut expiration_fq_vec);
 
         cert_vec
     }
@@ -160,7 +164,7 @@ impl Cert {
         for cert_field in &self.to {
             data.push_str(&format!(
                 "{:?}{:?}",
-                cert_field.metadata.fname, cert_field.field
+                cert_field.format_field.fname, cert_field.field
             ));
         }
 
@@ -183,11 +187,11 @@ pub struct WoolballName {
 }
 
 impl WoolballName {
-    pub fn id(&self) -> BN254R {
+    pub fn id(&self) -> Fq {
         babyjubjub::woolball_name_to_fq(&self.name).unwrap()
     }
 
-    pub fn to_bn254r_vec(&self) -> Vec<BN254R> {
+    pub fn to_fq_vec(&self) -> Vec<Fq> {
         vec![self.id()]
     }
 }
@@ -206,7 +210,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 let name = Text::new(&field.fdescription).prompt().unwrap();
                 let woolball_name = WoolballName { name };
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::WoolballName(woolball_name),
                 };
 
@@ -224,7 +228,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 let babyjubjub_pubkey: babyjubjub::PubKey = babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
 
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
                 };
 
@@ -234,7 +238,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 let address_hex_str = Text::new(&field.fdescription).prompt().unwrap();
 
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::EVMAddress(address_hex_str),
                 };
 
@@ -251,7 +255,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
             FieldTypeName::WoolballName => {
                 let name: String = Text::new(&field.fdescription).prompt().unwrap();
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::Name(name),
                 };
 
@@ -267,7 +271,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
 
                 // create certificate field
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
                 };
 
@@ -287,7 +291,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
 
                 // create certificate field
                 let cert_field = CertField {
-                    metadata: field,
+                    format_field: field,
                     field: FieldType::Timestamp(datetime_utc),
                 };
 
@@ -301,7 +305,7 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                     Ok(age_str) => match age_str.parse::<u32>() {
                         Ok(age) if age <= 120 => {
                             let cert_field = CertField {
-                                metadata: field,
+                                format_field: field,
                                 field: FieldType::Age(age),
                             };
 

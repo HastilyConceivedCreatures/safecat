@@ -267,7 +267,7 @@ pub fn message_to_fq_vec(message: &str) -> Result<Fq, Error> {
     let bytes = message.as_bytes();
 
     // Pack the message bytes into right-aligned 31-byte chunks
-    let fr_vector: Vec<Fq> = cast::bytes_to_fields(bytes)
+    let fq_vector: Vec<Fq> = cast::bytes_to_fields(bytes)
         .iter()
         .map(|&b| Fq::from_str(&b.to_string()).unwrap())
         .collect();
@@ -276,7 +276,7 @@ pub fn message_to_fq_vec(message: &str) -> Result<Fq, Error> {
     let poseidon = Poseidon::new();
 
     // // Hash the input vector
-    Ok(poseidon.hash(fr_vector)?)
+    Ok(poseidon.hash(fq_vector)?)
 }
 
 // Casting Fr of Babyjubjub to hex strings

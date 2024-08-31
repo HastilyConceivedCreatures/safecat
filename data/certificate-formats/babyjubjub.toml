@@ -1,0 +1,9 @@
+[[to]]
+fname = "BabyjubjubPubkey"
+fdescription = "BabyjubjubPubkey (128 hex): "
+ftype = "BabyjubjubPubkey"
+
+[[body]]
+fname = "Birthdate"
+fdescription = "Date of birth"
+ftype = "Timestamp"

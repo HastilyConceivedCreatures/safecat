@@ -1,0 +1,7 @@
+[package]
+name = "verify_certificates"
+type = "bin"
+authors = [""]
+compiler_version = ">=0.25.0"
+
+[dependencies]

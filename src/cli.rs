@@ -46,17 +46,21 @@ pub enum Commands {
 
     /// Create a certification from an assertation
     Attest {
-        #[arg(long, value_parser = ["babyjubjub", "babyjubjub-evmaddres", "babyjubjub-woolball"], default_value = "babyjubjub")]
+        #[arg(long, default_value = "babyjubjub")]
         certificate_type: String,
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         _args: Vec<String>,
     },
 
-    /// Shows keys
+    /// Prove you're a unique human to someone
     Prove {
         // what to prove?
-        #[arg(long, value_parser = ["babyjubjub", "address"], default_value = "babyjubjub")]
+        #[arg(long, value_parser = ["human", "alien"], default_value = "human")]
         what: String,
+
+        // to whom to prove?
+        #[arg(long, default_value = "")]
+        to_whom: String,
     },
 }
 

@@ -25,6 +25,7 @@ inquire = { version = "0.7.5", features = ["date"] }
 ark-serialize = { version = "0.4.2", features = ["derive"] }
 regex = "1.10.5"
 toml = "0.8.14"
+zip = "2.2.0"
 
 [package.metadata.deb]
 name = "Safecat"

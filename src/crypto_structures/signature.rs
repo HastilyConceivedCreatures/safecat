@@ -5,6 +5,7 @@ use crate::{
     io_utils,
     serialization::{ark_de, ark_se},
     Error,
+    consts,
 };
 use ark_bn254::Fr as Fq;
 use babyjubjub_ark::Fr;
@@ -29,13 +30,16 @@ pub struct SignatureAndSigner {
 impl SignatureAndSigner {
     // Signs a hash. Returns a signature struct
     pub fn sign_hash(hash_bn254: Fq) -> Result<SignatureAndSigner, Error> {
+        // Construct full path to the private key file
+        let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+
         // Check if private key file exists
-        if !io_utils::file_exists("", "priv.key")? {
+        if !io_utils::file_exists("", &privkey_path_filename)? {
             return Err("No key has been generated yet.".into());
         }
 
         // Load private key from file
-        let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
+        let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
         // Sign the hash
         let signature: Signature = private_key.sign(hash_bn254)?;
