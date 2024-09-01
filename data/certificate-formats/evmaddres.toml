@@ -7,3 +7,8 @@ ftype = "EVMAddress"
 fname = "Birthdate"
 fdescription = "Date of birth"
 ftype = "Timestamp"
+
+[[body]]
+fname = "Expiration"
+fdescription = "Expiration Date"
+ftype = "Timestamp"

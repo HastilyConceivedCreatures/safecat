@@ -79,13 +79,13 @@ pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
             cert_type: found_cert.cert_type,
             trust_kernel_root: trust_kernel.root,
             last_checked_timestamp: Utc::now().timestamp().to_string(),
-            expiration: found_cert.expiration.timestamp().to_string(),
             birthdate: found_cert.body[0]
                 .field
                 .as_timestamp()
                 .unwrap()
                 .timestamp()
                 .to_string(),
+            expiration: found_cert.body[1].field.as_timestamp().unwrap().timestamp().to_string(),
             person: *found_cert.to[0].field.as_babyjubjub_pubkey().unwrap(),
             signatures: vec![found_signature],
             signers_hash_path: vec![SignersHashPath {

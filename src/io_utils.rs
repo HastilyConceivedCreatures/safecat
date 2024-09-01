@@ -47,10 +47,11 @@ pub fn save_certificate(cert: Cert, signature: SignatureAndSigner) -> Result<Str
 
     // if filename exists, add  suffix to it such as "filename-1"
     let mut filename_index = 1;
-    let mut filename = cert.name().to_string();
+    let base_filename = cert.name();
+    let mut filename = base_filename.clone();
 
     while file_exists(path, &filename)? {
-        filename = format!("{}-{}", filename, filename_index);
+        filename = format!("{}-{}", base_filename, filename_index);
         filename_index += 1;
     }
 

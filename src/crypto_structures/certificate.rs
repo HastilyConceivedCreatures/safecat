@@ -2,7 +2,7 @@ pub use ark_bn254::Fr as Fq;
 use chrono::{DateTime, Utc};
 
 use crate::{cast, crypto_structures::babyjubjub};
-use chrono::{Months, NaiveDate};
+use chrono::NaiveDate;
 use inquire::{formatter::DEFAULT_DATE_FORMATTER, CustomType, Text};
 use poseidon_ark::Poseidon;
 use serde::{Deserialize, Serialize};
@@ -60,8 +60,7 @@ pub struct CertField {
     pub field: FieldType,
 }
 
-/// Represents a certificate with recipient fields,
-/// body fields, and an expiration time.
+/// Represents a certificate with recipient fields, and body fields
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cert {
     /// Certificate name (e.g., ID, DAO_membership, etc.)
@@ -70,8 +69,6 @@ pub struct Cert {
     pub to: Vec<CertField>,
     /// A vector of certificate fields for the body.
     pub body: Vec<CertField>,
-    /// The expiration time of the certificate.
-    pub expiration: DateTime<Utc>,
 }
 
 impl Cert {
@@ -149,12 +146,6 @@ impl Cert {
             }
         }
 
-        let expiratio_fq = babyjubjub::datetime_utc_to_fq(self.expiration).unwrap();
-
-        let mut expiration_fq_vec = vec![expiratio_fq];
-
-        cert_vec.append(&mut expiration_fq_vec);
-
         cert_vec
     }
 
@@ -201,7 +192,6 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
         cert_type: cert_type.to_string(),
         to: vec![],
         body: vec![],
-        expiration: Utc::now().checked_add_months(Months::new(12)).unwrap(), // one year from now
     };
 
     for field in format.to {
@@ -322,21 +312,6 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
             }
         }
     }
-
-    // get expiration date
-    let expiration_utc: DateTime<Utc> = CustomType::<NaiveDate>::new("Expiration date:")
-        .with_placeholder("dd/mm/yyyy")
-        .with_parser(&|i| NaiveDate::parse_from_str(i, "%d/%m/%Y").map_err(|_e| ()))
-        .with_formatter(DEFAULT_DATE_FORMATTER)
-        .with_error_message("Please type a valid date.")
-        .prompt()
-        .unwrap()
-        .and_hms_opt(23, 59, 59)
-        .unwrap()
-        .and_utc();
-
-    // create certificate field
-    cert.expiration = expiration_utc;
 
     cert
 }
