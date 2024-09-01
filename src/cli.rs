@@ -12,63 +12,81 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Generates a private key
+    /// Generates a new private key.
     Generate,
 
-    /// Shows keys
+    /// Displays the keys in the specified format.
     ShowKeys {
+        /// Format to display the keys ("detailed" or "hex"). Default is "detailed".
         #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed")]
         format: String,
     },
 
-    /// Sign a message using BabyJubJub
+    /// Signs a message using the EdDSA scheme with the BabyJubJub curve.
     Sign {
+        /// Format to display the signature ("detailed" or "hex"). Default is "detailed".
         #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed")]
         format: String,
+
+        /// The message to sign.
         message: String,
+
+        /// Additional arguments (supports trailing and hyphen-prefixed values).
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         _args: Vec<String>,
     },
 
-    /// Sign BabyJubJub field element
+    /// Signs a BabyJubJub field element with EdDSA scheme.
     SignField {
+        /// Format to display the signature ("detailed" or "hex"). Default is "detailed".
         #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed")]
         format: String,
+
+        /// The field element to sign.
         field: String,
     },
 
-    /// Verify a message using BabyJubJub
+    /// Verifies a message signature using the BabyJubJub signature scheme.
     Verify {
+        /// The message to verify.
         message: String,
+
+        /// The signature to verify, in hex format.
         signature: String,
+
+        /// The public key to verify against, in hex format.
         public_key: String,
     },
 
-    /// Create a certification from an assertation
+    /// Creates a certification from an assertion.
+    ///
+    /// The certificate definition should be a `.toml` file located in the
+    /// `data/certificate-formats/` directory.
     Attest {
+        /// Specifies the type of certificate. Default is "babyjubjub".
         #[arg(long, default_value = "babyjubjub")]
         certificate_type: String,
+
+        /// Additional arguments (supports trailing and hyphen-prefixed values).
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         _args: Vec<String>,
     },
 
-    /// Prove you're a unique human to someone
+    /// Proves you're a unique human (or alien) to someone.
     Prove {
-        // what to prove?
+        /// What to prove ("human" or "alien"). Default is "human".
         #[arg(long, value_parser = ["human", "alien"], default_value = "human")]
         what: String,
 
-        // to whom to prove?
+        /// To whom to prove your uniqueness.
         #[arg(long, default_value = "")]
         to_whom: String,
     },
 }
 
-/// Loads an ANSI cat and makes it talk a random sentence from a file.
+/// Loads an ANSI cat and makes it say a random sentence from a file.
 fn cat_is_talking_now() -> &'static str {
     let cat = AnsiCat::load("src/ansi_cat/ansi_cat.ansi".to_string()).unwrap();
-
     let sentence = io_utils::read_random_line("src/ansi_cat/help_sentences.txt").unwrap();
-
     cat.talk(9, 2, sentence)
 }
