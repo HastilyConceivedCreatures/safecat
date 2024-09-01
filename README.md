@@ -3,19 +3,19 @@
 
 A simple CLI tool to generate, sign, and verify digital signatures using EdDSA *Baby Jubjub Elliptic Curve* signatures and a *Poseidon hash function*.
 
+Additionally, Safecat specializes in creating cryptographically signed certificates.
+
 See [the announcement article](http://neimanslab.org/2024-02-19/safecat.html) for more details.
 
-**This branch was made especially for the ZK Hack Krakow Hackathon. It contains two new commands. "sign-field" is used to sign a field directly. "attest birth-name-pubkey" is used to create a certificate for a combination of name (string) and a public key.** 
-
 ## compile
-Install Rust, and run `cargo build`.
+Install Rust, and run `cargo build`. Last tested with `cargo 1.80.0`.
 
 ## usage
 1. `safecat generate`. Generates a new EdDSA Baby Jubjub Elliptic Curve private-public key.
 
-    The private key is saved in a file `priv.key`, which is not encrypted! Unsafe indeed.
+    The private key is saved in a file `data/priv.key`, which is not encrypted! Unsafe indeed.
 
-2. `safecat show-keys`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. You need "detailed" if you want to verify the signature in Noir (it shows the x and y values of the key), and "hex" if you verify with safecat (it shows the whole key as one big hex string).
+2. `safecat show-keys`. Shows the last generated private-public keys. You can choose which format to show, hex or detailed. Hex is simply a concatenation of the hex values of the public key's `x` and `y` elements. You need "detailed" if you want to verify the signature in Noir (it shows the x and y values of the key), and "hex" if you verify with Safecat.
 
     Here's how you show the detailed format:
     ```
@@ -26,58 +26,47 @@ Install Rust, and run `cargo build`.
     safecat show-keys --format hex
     ```
 
-3. `safecat sign "message"`. Signs a message using the last generated private-public key. By default, the message is hashed using the Poseidon hash function, but you can change it to SHA-256 using the --hash option. You can also choose a format as before.
+3. `safecat sign <message>`. Signs a message using the private key located in data/priv.key. The message is hashed using the Poseidon hash function by default, but you can change it to SHA-256 using the --hash option. You can also choose a format as before (the hex signature is the concatenation of the hex format of the signature's r.x, r.y, s).
     ```
     safecat sign --hash sha256 --format hex "hello world"
     ```
 
-4. `safecat verify "message" <signature> <public key>`. Verifies an existing signature of a message. By default, it assumed the message was hashed using Poseidon, but you can change it to SHA-256 using the --hash option like before. The signature and public key must be given in a hex form. 
+4. `safecat sign-field <field>`. Same as `sign`, but instead of getting a message it accepts an element of the BN254 field. This may be the Poseidon hash of some message, but it can also be something else. Example:
+    ```
+    safecat sign-field 7185613633770928202545956049438992141449192152982569455300607652365873326347
+    ```
+
+5. `safecat verify <message> <signature> <public key>`. Verifies an existing signature of a message. By default, it assumes the message was hashed using Poseidon, but you can change it to SHA-256 using the --hash option like before. The signature and public key must be given in a hex form (see definitions above). 
 
     Verify commands are a bit long since the signature and public keys are long, so here's an example of how to use them. It doesn't look pretty.
 
-    In later versions, we'll allow reading the parameters from a file or feed them interactively.
+    In later versions, we'll allow reading the parameters from a file or feeding them interactively.
 
     ```
     safecat verify "hello world" 245a157dc8e23ea8a0ab41b1c2d95ee7d59db5b76cba54b6f10630e5e0aefbdd140996400320386a9a2ec4b06ea7d1c885cd311751445ea171af1ab64dba5ace0420d34429497da49443ae35deb8e3daa745dc0e776df3703640078a67982cad 12055e5d761fd705d1f234770fc55b2cfdfd91e741d8f43b2a88cb5a88f9c1c01061ca2f21151da2903e7ccdf11dbda65c20851dd1df4ac522431041ea1738f9
     ```
 
-5. `safecat attest`' Create certificates that attest data. So far Safecat supports only attestations of birth certificates (or proof of personhood if you prefer this term).
-
-    You can attest either for a person's public key like this:
-
-    `safecat attest birth-pubkey <public key> <cetification type> <expiration date> <birth date>`,
-
-    or for an EVM-style address:
-`safecat attest birth-address <address> <cetification type> <expiration date> <birth date>`,
-
-
-    , where:
-    - `<public key>` is in hex format, e.g, '1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a',
-    - `<address>` is hex as well, e.g., `f39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
-    - `<certification type>` is an integer,
-    - `<expiration date>` and `<birth date>` are linux timestamps.
+5. `safecat attest <certificate_type>`. Creates certificates interactively. Certificate type is a string like "babyjubjub" (which is also the default value). Safecat searches for the toml certificate format specification in the folder data/certificate-formats (So for "babyjubjub" it would be "data/certificate-formats/babyjubjub.toml".
 
     Example usage:
 
     ```
-    safecat attest birth-pubkey 1f14815d0a0e42cb51753f3d805c0191f3d3697e18e6593892347f275fc2f5b90d9e9b71dd43936e6499d46c89a9de0bdfbeb23c7056a99646e584fcbf80274a 1 1713109860 892569062
+    safecat attest --certificate-type babyjubjub
     ```
 
     Certificates are saved in `certs/created` folder.
 
-6. `safecat show-certs <created|received>`. Show the certificates created or received by the user, which are located in the folder `certs/created` or `certs/received` correspondingly.
+    An explanation of certificates .toml format files is given below.
 
-   **Comment**. At the moment `show-certs` works properly only for certificates created for public keys. It will be fixed for general certificates later on once we generalize the certificate system.
+7. `safecat prove <what>`. A WIP command to verify claims out of the collection a person holds. Ignore it for now, unless you really know what's going on with the project.
+
 
 ## Noir examples
-There are three examples of integrating Safecat with Noir (tested with V0.25.0).
+There are examples of integrating Safecat with Noir in "data" folder. Specifically, `NoirGeneralProofs` and `NoirTargetedProofs`. However, there's a bug with verifying public variables in the current build of Noir so they are not working.
 
-1. [Poseidon hash of a long string](noir-examples/poseidon-hash-long-strings/). Creating a Poseidon hash of long strings in Noir that corresponds to Poseidon hashes created with Safecat.
-2. [Verify certificates for a public key](noir-examples/verify_human_certificates_for_public_key/). Verifying with Noir certificates for a public kez built by Safecat. This is a big elaborated example.
-3. [Verify certificates for an address](noir-examples/verify_human_certificates_for_address/). Same as "example 2", only that this time it verifies certificates for an EVM-style address.
+You can see working example with Noir 0.25 in previous releases.
 
 ## Limitations
-- Poseidon hash is limited to strings of 496 characters.
-- The certificate system is limited only to birth certificates.
-- `show-certs` only show properly certificates created for a public key.
-- ... plenty of other limitations, this is all WIP!
+- Poseidon hash is limited to strings of 496 characters. This can be extended to arbitrary length but it's left as a task for later versions.
+- The proving system doesn't work.
+- ... plenty of other limitations, this is all WIP! I know I've been saying it for half a year already. But well, at least I'm consistent!
