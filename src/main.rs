@@ -18,8 +18,12 @@ fn main() -> Result<(), Error> {
 
     // Match the subcommand and execute the corresponding logic
     match &cli.command {
-        Commands::Generate => commands::generate::generate(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME)?,
-        Commands::ShowKeys { format } => commands::show_keys::show_keys(consts::DATA_DIR ,consts::PRIVATE_KEY_FILENAME, format)?,
+        Commands::Generate => {
+            commands::generate::generate(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)?
+        }
+        Commands::ShowKeys { format } => {
+            commands::show_keys::show_keys(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME, format)?
+        }
         Commands::Sign {
             format,
             message,
@@ -50,7 +54,7 @@ fn main() -> Result<(), Error> {
         } => {
             commands::attest::attest(certificate_type.to_string())?;
         }
-        Commands::Prove { what, to_whom} => {
+        Commands::Prove { what, to_whom } => {
             commands::prove::prove(what, to_whom)?;
         }
     }

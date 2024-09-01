@@ -8,4 +8,5 @@ pub const CERTIFICATE_FORMATS: &str = "certificate-formats";
 
 // ANSI escape code
 pub const GREEN_COLOR_ANSI: &str = "\x1b[32m";
+pub const RED_COLOR_ANSI: &str = "\x1b[31m";
 pub const RESET_COLOR_ANSI: &str = "\x1b[0m";

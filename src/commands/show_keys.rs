@@ -1,7 +1,11 @@
 use crate::{crypto_structures::babyjubjub, Error};
 
 // Displays private and public keys based on the specified output format.
-pub fn show_keys(folder_path: &str, privkey_filename: &str, output_format: &str) -> Result<(), Error> {
+pub fn show_keys(
+    folder_path: &str,
+    privkey_filename: &str,
+    output_format: &str,
+) -> Result<(), Error> {
     // Construct full path to the private key file
     let privkey_path_filename = folder_path.to_string() + "/" + privkey_filename;
 

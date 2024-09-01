@@ -1,11 +1,14 @@
 use crate::crypto_structures::{babyjubjub, signature};
-use crate::{consts, Error, io_utils, cast};
+use crate::{cast, consts, io_utils, Error};
+use ark_std::str::FromStr;
 use babyjubjub_ark::{verify, Fq};
-use poseidon_ark::Poseidon;
-use ark_std::str::FromStr; // import to use from_str in structs
+use poseidon_ark::Poseidon; // import to use from_str in structs
 
 // Signs a message using BabyJubJub based on the specified hash algorithm and output format.
-pub fn sign_and_print_message(message_to_sign_string: String, output_format: String) -> Result<(), Error> {
+pub fn sign_and_print_message(
+    message_to_sign_string: String,
+    output_format: String,
+) -> Result<(), Error> {
     // Sign the message
     let (signature, hash_fq) = sign_message(message_to_sign_string)?;
 
@@ -14,9 +17,18 @@ pub fn sign_and_print_message(message_to_sign_string: String, output_format: Str
 
     if output_format == "detailed" {
         // Print signature
-        println!("Signature: R.X: {}", babyjubjub::fq_to_dec_str(&signature.rx));
-        println!("Signature: R.Y: {}", babyjubjub::fq_to_dec_str(&signature.ry));
-        println!("Signature: S: {}", babyjubjub::fr_to_dec_string(&signature.s));
+        println!(
+            "Signature: R.X: {}",
+            babyjubjub::fq_to_dec_str(&signature.rx)
+        );
+        println!(
+            "Signature: R.Y: {}",
+            babyjubjub::fq_to_dec_str(&signature.ry)
+        );
+        println!(
+            "Signature: S: {}",
+            babyjubjub::fr_to_dec_string(&signature.s)
+        );
     } else if output_format == "hex" {
         // change signature variables to hex
         let signature_x_hex = babyjubjub::fq_to_hex_str(&signature.rx);
@@ -34,7 +46,10 @@ pub fn sign_and_print_message(message_to_sign_string: String, output_format: Str
 
 // Signs a message using BabyJubJub based on the specified output format *without* hashing it.
 // This function assumes the message is already a hash
-pub fn sign_and_print_babyjubjub_fq(hash_to_sign_string: String, output_format: String)  -> Result<(), Error> {
+pub fn sign_and_print_babyjubjub_fq(
+    hash_to_sign_string: String,
+    output_format: String,
+) -> Result<(), Error> {
     // Sign the message
     let (signature, hash_fq) = sign_babyjubjub_fq(hash_to_sign_string)?;
 
@@ -43,9 +58,18 @@ pub fn sign_and_print_babyjubjub_fq(hash_to_sign_string: String, output_format: 
 
     if output_format == "detailed" {
         // Print signature
-        println!("Signature: R.X: {}", babyjubjub::fq_to_dec_str(&signature.rx));
-        println!("Signature: R.Y: {}", babyjubjub::fq_to_dec_str(&signature.ry));
-        println!("Signature: S: {}", babyjubjub::fr_to_dec_string(&signature.s));
+        println!(
+            "Signature: R.X: {}",
+            babyjubjub::fq_to_dec_str(&signature.rx)
+        );
+        println!(
+            "Signature: R.Y: {}",
+            babyjubjub::fq_to_dec_str(&signature.ry)
+        );
+        println!(
+            "Signature: S: {}",
+            babyjubjub::fr_to_dec_string(&signature.s)
+        );
     } else if output_format == "hex" {
         // change signature variables to hex
         let signature_x_hex = babyjubjub::fq_to_hex_str(&signature.rx);
@@ -62,14 +86,12 @@ pub fn sign_and_print_babyjubjub_fq(hash_to_sign_string: String, output_format: 
 }
 
 // Hashes a message and then signs it. Returns the signature and the hash.
-pub fn sign_message(
-    message_to_sign_string: String,
-) -> Result<(signature::Signature, Fq), Error> {
+pub fn sign_message(message_to_sign_string: String) -> Result<(signature::Signature, Fq), Error> {
     // calculate max message length for Poseidon hash
     const MAX_POSEIDON_MESSAGE_LEN: usize =
         consts::MAX_POSEIDON_PERMUTATION_LEN * consts::PACKED_BYTE_LEN;
 
-    if  message_to_sign_string.len() > MAX_POSEIDON_MESSAGE_LEN {
+    if message_to_sign_string.len() > MAX_POSEIDON_MESSAGE_LEN {
         println!(
             "Message too long! Maximum message length with Poseidon  is {} characters",
             MAX_POSEIDON_MESSAGE_LEN
@@ -145,7 +167,7 @@ pub fn verify_signature(
     Ok(())
 }
 
-// Packs a message into an array and calculates its Poseidon hash 
+// Packs a message into an array and calculates its Poseidon hash
 fn poseidon_message(message_to_verify_string: &str) -> Fq {
     let bytes = message_to_verify_string.as_bytes();
 

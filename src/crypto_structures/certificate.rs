@@ -99,8 +99,7 @@ impl Cert {
                 }
 
                 FieldType::EVMAddress(ref evm_address) => {
-                    let evm_address_bn254 =
-                        babyjubjub::evm_address_to_fq(&evm_address).unwrap();
+                    let evm_address_bn254 = babyjubjub::evm_address_to_fq(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
@@ -123,14 +122,12 @@ impl Cert {
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
                 FieldType::EVMAddress(ref evm_address) => {
-                    let evm_address_bn254 =
-                    babyjubjub::evm_address_to_fq(&evm_address).unwrap();
+                    let evm_address_bn254 = babyjubjub::evm_address_to_fq(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
                 FieldType::Timestamp(ref timestamp) => {
-                    let timestamp_fq =
-                        babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
+                    let timestamp_fq = babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
 
                     cert_vec.push(timestamp_fq);
                 }
@@ -215,7 +212,8 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
                 //     bn254_scalar_cast::babyjubjub_pubkey_to_bn254(&pubkey_hex_str).unwrap();
 
                 // validate public key input and split it into x and y
-                let babyjubjub_pubkey: babyjubjub::PubKey = babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
+                let babyjubjub_pubkey: babyjubjub::PubKey =
+                    babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
 
                 let cert_field = CertField {
                     format_field: field,

@@ -1,17 +1,15 @@
-use crate::{consts, crypto_structures::signature, serialization, Error, io_utils, cast};
+use crate::{cast, consts, crypto_structures::signature, io_utils, serialization, Error};
 pub use ark_bn254::Fr as Fq; // Fr (scalar field) of BN254 is the Fq (base field) of Babyjubjub
-use babyjubjub_ark::{new_key, Point, PrivateKey, Fr};
-use num::{Num, BigUint};
+use ark_std::str::FromStr; // import to use from_str in structs
+use babyjubjub_ark::{new_key, Fr, Point, PrivateKey};
+use chrono::{DateTime, Utc}; // for date_to_fq
+use num::{BigUint, Num};
+use poseidon_ark::Poseidon;
 pub use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use ark_std::str::FromStr; // import to use from_str in structs
-use chrono::{DateTime, Utc}; // for date_to_fq
-use poseidon_ark::Poseidon;
-use sha2::{Digest, Sha256};
-
-
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PubKey {
@@ -30,7 +28,6 @@ pub struct PubKey {
 /// Str hex is simple concatenating the hex of the x and y of the pubkey
 impl PubKey {
     pub fn from_str_hex(pubkey_str: String) -> Result<PubKey, Error> {
-        
         // Split the public key string into two parts: pubkey_x_str and pubkey_y_str
         let (x_str, y_str) = io_utils::split_hex_string(pubkey_str.as_str());
 
@@ -137,7 +134,6 @@ impl PrivKey {
         private_key_dec
     }
 
-
     pub fn public(&self) -> PubKey {
         let babyjubjub_private_key = PrivateKey { key: self.key };
 
@@ -173,7 +169,8 @@ pub fn fr_to_hex_string(babyjubjubr_element: &Fr) -> String {
     let babyjubjubr_element_string = babyjubjubr_element.to_string();
 
     // Parse the decimal string into a hex
-    let babyjubjubr_element_decimal = BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
+    let babyjubjubr_element_decimal =
+        BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
     let babyjubjubr_element_hex_string = format!("{:0>64x}", babyjubjubr_element_decimal);
 
     // return the hex string
@@ -186,7 +183,8 @@ pub fn fr_to_dec_string(babyjubjubr_element: &Fr) -> String {
     let babyjubjubr_element_string = babyjubjubr_element.to_string();
 
     // Parse the decimal string into a hex
-    let babyjubjubr_element_decimal = BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
+    let babyjubjubr_element_decimal =
+        BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
 
     // return the hex string
     babyjubjubr_element_decimal.to_string()
@@ -245,7 +243,6 @@ pub fn woolball_name_to_fq(name: &str) -> Result<Fq, Error> {
 
     Ok(sha256_fq)
 }
-
 
 pub fn datetime_utc_to_fq(datetime: DateTime<Utc>) -> Result<Fq, Error> {
     let datetime_i64 = datetime.timestamp();

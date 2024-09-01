@@ -1,10 +1,7 @@
-use crate::crypto_structures::{
-    babyjubjub,
-    certificate::Cert,
-    signature::SignatureAndSigner,
-};
+use crate::crypto_structures::{babyjubjub, certificate::Cert, signature::SignatureAndSigner};
 
 use crate::commands::sign;
+use crate::consts;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -12,13 +9,18 @@ use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use toml;
 use std::process::Command;
-use zip::{ZipWriter, write::SimpleFileOptions};
+use toml;
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
     // Stating what we prove
-    println!("proving: {}. Lol what? we only prove one thing for now rofl", what);
+    println!(
+        "{}proving: {}. This is a WIP feature, don't use it unless you know the inner works of Safecat! {}",
+        consts::RED_COLOR_ANSI,
+        what,
+        consts::RESET_COLOR_ANSI
+    );
 
     // Step 1: Get list of files from certs/received
     let certs_path = Path::new("certs/received");
@@ -85,7 +87,12 @@ pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
                 .unwrap()
                 .timestamp()
                 .to_string(),
-            expiration: found_cert.body[1].field.as_timestamp().unwrap().timestamp().to_string(),
+            expiration: found_cert.body[1]
+                .field
+                .as_timestamp()
+                .unwrap()
+                .timestamp()
+                .to_string(),
             person: *found_cert.to[0].field.as_babyjubjub_pubkey().unwrap(),
             signatures: vec![found_signature],
             signers_hash_path: vec![SignersHashPath {
@@ -98,7 +105,8 @@ pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
         // Serialize to TOML and write to output file
         let prover_toml = prover.to_toml();
         let toml_string = toml::to_string_pretty(&prover_toml).expect("Failed to serialize TOML");
-        fs::write("data/NoirTargetedProofs/Prover.toml", toml_string).expect("Unable to write prover.toml");
+        fs::write("data/NoirTargetedProofs/Prover.toml", toml_string)
+            .expect("Unable to write prover.toml");
 
         println!("Successfully wrote data/NoirTargetedProofs/Prover.toml");
 
@@ -174,7 +182,6 @@ impl Prover {
             rx: babyjubjub::fq_to_dec_str(&to_whom_signature.rx),
             ry: babyjubjub::fq_to_dec_str(&to_whom_signature.ry),
         };
-
 
         ProverToml {
             cert_type: cert_type_str_dec,
@@ -290,8 +297,10 @@ fn prove_with_nargo_bb() {
     for file_name in &files_to_zip {
         let file_path = target_dir.join(file_name);
         let mut file = File::open(&file_path).expect("Failed to open file");
-        
-        zip_writer.start_file(file_name, options).expect("Failed to add file to zip");
+
+        zip_writer
+            .start_file(file_name, options)
+            .expect("Failed to add file to zip");
 
         io::copy(&mut file, &mut zip_writer).expect("Failed to write file to zip");
     }

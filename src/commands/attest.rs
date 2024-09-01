@@ -8,8 +8,6 @@ use std::fs::OpenOptions;
 use std::io::Read;
 use toml;
 
-
-
 pub fn attest(format: String) -> Result<(), Error> {
     // calculating certificate formats file
     let formats_folder_path = consts::DATA_DIR.to_string() + "/" + consts::CERTIFICATE_FORMATS;
@@ -36,9 +34,7 @@ pub fn attest(format: String) -> Result<(), Error> {
 }
 
 fn read_cert_format_from_toml(file_name: &str) -> Result<certificate::CertFormat, Error> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open(file_name)?;
+    let mut file = OpenOptions::new().read(true).open(file_name)?;
 
     let mut toml_string = String::new();
     file.read_to_string(&mut toml_string)?;
