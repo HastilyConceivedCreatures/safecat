@@ -100,12 +100,12 @@ pub fn sign_message(message_to_sign_string: String) -> Result<(signature::Signat
 
     let hash_fq = poseidon_message(&message_to_sign_string);
 
-    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
-
     // Check if private key file exists
     if !io_utils::file_exists(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)? {
         return Err("No key has been generated yet.".into());
     }
+
+    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
 
     let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
@@ -120,11 +120,13 @@ fn sign_babyjubjub_fq(fq_as_str: String) -> Result<(signature::Signature, Fq), E
     let hash_fq = Fq::from_str(&*fq_as_str).unwrap();
 
     // Check if private key file exists
-    if !io_utils::file_exists("", "priv.key")? {
+    if !io_utils::file_exists(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)? {
         return Err("No key has been generated yet.".into());
     }
 
-    let private_key = babyjubjub::PrivKey::read_from_file("priv.key")?;
+    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+
+    let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
     // Sign the message
     let signature: signature::Signature = private_key.sign(hash_fq)?;
