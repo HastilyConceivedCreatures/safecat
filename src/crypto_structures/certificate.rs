@@ -11,7 +11,8 @@ use sha2::{Digest, Sha256};
 /// Represents various types of fields that can be used in a certificate.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FieldType {
-    Name(String),
+    Text(String),
+    Integer(u32),
     Timestamp(DateTime<Utc>),
     Age(u32),
     BabyjubjubPubkey(babyjubjub::PubKey),
@@ -24,6 +25,8 @@ pub enum FieldType {
 /// Make sure that this enum stays synchronized with FieldType to avoid mismatches.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FieldTypeName {
+    Text,
+    Integer,
     Timestamp,
     Age,
     BabyjubjubPubkey,
@@ -89,9 +92,22 @@ impl Cert {
         for cert_field in &self.to {
             let field = &cert_field.field;
             match field {
+                FieldType::Text(ref text) => {
+                    let text_bn254 = babyjubjub::message_to_fq_vec(&text).unwrap();
+
+                    cert_vec.push(text_bn254);
+                }
+
+                FieldType::Integer(ref number) => {
+                    let number_bn254 = Fq::from(*number);
+
+                    cert_vec.push(number_bn254);
+                }
+
                 FieldType::WoolballName(ref woolball_name) => {
                     cert_vec.append(&mut woolball_name.to_fq_vec());
                 }
+
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
 
@@ -113,24 +129,40 @@ impl Cert {
         for cert_field in &self.body {
             let field = &cert_field.field;
             match field {
+                FieldType::Text(ref text) => {
+                    let text_bn254 = babyjubjub::message_to_fq_vec(&text).unwrap();
+
+                    cert_vec.push(text_bn254);
+                }
+
+                FieldType::Integer(ref number) => {
+                    let number_bn254 = Fq::from(*number);
+
+                    cert_vec.push(number_bn254);
+                }
+
                 FieldType::WoolballName(ref woolball_name) => {
                     cert_vec.append(&mut woolball_name.to_fq_vec());
                 }
+
                 FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
                     let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
 
                     cert_vec.append(&mut babyjubjub_pubkey_vec);
                 }
+
                 FieldType::EVMAddress(ref evm_address) => {
                     let evm_address_bn254 = babyjubjub::evm_address_to_fq(&evm_address).unwrap();
 
                     cert_vec.push(evm_address_bn254);
                 }
+
                 FieldType::Timestamp(ref timestamp) => {
                     let timestamp_fq = babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
 
                     cert_vec.push(timestamp_fq);
                 }
+
                 FieldType::Age(ref age) => {
                     let age_fq = Fq::from(*age);
 
@@ -241,10 +273,11 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
     for field in format.body {
         match field.ftype {
             FieldTypeName::WoolballName => {
-                let name: String = Text::new(&field.fdescription).prompt().unwrap();
+                let name = Text::new(&field.fdescription).prompt().unwrap();
+                let woolball_name = WoolballName { name };
                 let cert_field = CertField {
                     format_field: field,
-                    field: FieldType::Name(name),
+                    field: FieldType::WoolballName(woolball_name),
                 };
 
                 cert.body.push(cert_field);
@@ -315,13 +348,25 @@ pub fn insert_cert_data(format: CertFormat, cert_type: &str) -> Cert {
 }
 
 impl FieldType {
-    pub fn is_name(&self) -> bool {
-        matches!(self, FieldType::Name(_))
+    pub fn is_text(&self) -> bool {
+        matches!(self, FieldType::Text(_))
     }
 
-    pub fn as_name(&self) -> Option<&String> {
-        if let FieldType::Name(name) = self {
+    pub fn as_text(&self) -> Option<&String> {
+        if let FieldType::Text(name) = self {
             Some(name)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_integer(&self) -> bool {
+        matches!(self, FieldType::Integer(_))
+    }
+
+    pub fn as_integer(&self) -> Option<u32> {
+        if let FieldType::Integer(number) = self {
+            Some(*number)
         } else {
             None
         }
