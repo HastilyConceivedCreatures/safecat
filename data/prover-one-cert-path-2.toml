@@ -1,0 +1,22 @@
+trust_kernel_root = ""
+last_checked_timestamp = ""
+expiration = ""
+birthdate = ""
+
+[person]
+x = ""
+y = ""
+
+[[signature]]
+s = ""
+rx = ""
+ry = ""
+
+[[signers]]
+x = ""
+y = ""
+
+[[signers_hash_path]]
+index = ""
+path = ["", ""]
+
