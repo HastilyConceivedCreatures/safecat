@@ -168,10 +168,6 @@ impl Cert {
 
                     cert_vec.push(age_fq);
                 }
-
-                _ => {
-                    println!("what what is field: {:?}", field);
-                }
             }
         }
 

@@ -9,6 +9,8 @@ use std::io::Read;
 use toml;
 
 pub fn attest(format: String) -> Result<(), Error> {
+    println!("format: {}", format);
+
     // calculating certificate formats file
     let formats_folder_path = consts::DATA_DIR.to_string() + "/" + consts::CERTIFICATE_FORMATS;
 

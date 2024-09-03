@@ -48,11 +48,8 @@ fn main() -> Result<(), Error> {
                 public_key.to_string(),
             )?
         }
-        Commands::Attest {
-            certificate_type,
-            _args,
-        } => {
-            commands::attest::attest(certificate_type.to_string())?;
+        Commands::Attest { format, _args } => {
+            commands::attest::attest(format.to_string())?;
         }
         Commands::Prove { what, to_whom } => {
             commands::prove::prove(what, to_whom)?;

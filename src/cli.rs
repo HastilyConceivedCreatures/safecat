@@ -65,7 +65,7 @@ pub enum Commands {
     Attest {
         /// Specifies the type of certificate. Default is "babyjubjub".
         #[arg(long, default_value = "babyjubjub")]
-        certificate_type: String,
+        format: String,
 
         /// Additional arguments (supports trailing and hyphen-prefixed values).
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
