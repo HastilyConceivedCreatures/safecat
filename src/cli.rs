@@ -60,8 +60,8 @@ pub enum Commands {
 
     /// Creates a certification from an assertion.
     ///
-    /// The certificate definition should be a `.toml` file located in the
-    /// `data/certificate-formats/` directory.
+    /// The certificate definition should be a `format.toml` file located in the
+    /// `data/formats/<format>/` directory.
     Attest {
         /// Specifies the type of certificate. Default is "babyjubjub".
         #[arg(long, default_value = "babyjubjub")]
