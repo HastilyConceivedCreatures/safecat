@@ -51,8 +51,11 @@ fn main() -> Result<(), Error> {
         Commands::Attest { format, _args } => {
             commands::attest::attest(format.to_string())?;
         }
-        Commands::Prove { what, to_whom } => {
-            commands::prove::prove(what, to_whom)?;
+        Commands::Prove {
+            cert_format,
+            proof_format,
+        } => {
+            commands::prove::prove(cert_format, proof_format)?;
         }
     }
 

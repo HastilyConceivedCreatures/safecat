@@ -41,23 +41,29 @@ impl Certificate {
     }
 }
 
-// Function to check that a person has a type 1 certificates signed by one signers
-// It takes the following arguments:
-// - person: The person whose certificate is being verified (address)
-// - trust_kernel_root: The root of the trust kernel Merkle tree
-// - last_checked_timestamp: The timestamp in which we check that the certificate is still valid
-// - expiration: The expiration date of the certificate
-// - birthdate: The person's birthdate
-// - signers: one person representing the signers
-// - signatures: one signatures corresponding to the signer
-// - signers_hash_path: One HashPath structs representing the hash path for the signer
+/// Validates that a person holds a type 1 certificate signed by an authorized signer.
+/// 
+/// # Arguments
+/// 
+/// * `cert_type` - The type of certificate being checked (Field).
+/// * `person` - The person whose certificate is being verified (address).
+/// * `society` - The root of the society Merkle tree. The leaves are public keys 
+///               of trusted entities authorized to issue certificates.
+/// * `last_checked_timestamp` - The timestamp when the certificate validity is checked.
+/// * `expiration` - The expiration date of the certificate (Field).
+/// * `birthdate` - The person's birthdate (Field).
+/// * `signers` - An array containing one person representing the signers.
+/// * `signatures` - An array containing one signature corresponding to the signer.
+/// * `signers_hash_path` - An array containing one `HashPath` struct, representing 
+///                         the hash path for the signer.
+/// * `to_whom` - The entity or person to whom the certificate is issued (Field).
+/// * `to_whom_signature` - The signature from the recipient entity or person.
 fn main(
     cert_type: Field,
     person: pub Person,
-    trust_kernel_root: pub Field,
+    society: pub Field,
     last_checked_timestamp: pub Field,
     expiration: Field,
-    birthdate: Field,
     signers: [ Person; 1],
     signatures: [ Signature; 1],
     signers_hash_path: [HashPath; 1],
@@ -87,7 +93,7 @@ fn main(
     let merkel_root = std::merkle::compute_merkle_root(leaf_signer, signers_hash_path[0].index, signers_hash_path[0].path);
 
     // Verify that the calculated Merkle roots match the trust kernel root
-    assert(merkel_root == trust_kernel_root);
+    assert(merkel_root == society);
 
     // Verify signature on to_whom
     let verify_signature_on_to_whom = dep::std::eddsa::eddsa_poseidon_verify(person.x, person.y, to_whom_signature.s, to_whom_signature.rx, to_whom_signature.ry, to_whom);    

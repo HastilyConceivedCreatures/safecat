@@ -1,0 +1,15 @@
+[[public]]
+fname = "society"
+fdescription = "society hash (64 hex): "
+ftype = "Hash"
+
+[[public]]
+fname = "LastCheckedTimestamp"
+fdescription = "The last timestamp for which the proof was made"
+ftype = "Timestamp"
+
+[[public]]
+fname = "ToWhom"
+fdescription = "The entity or person to whom the certificate is issued"
+ftype = "SignedText"
+

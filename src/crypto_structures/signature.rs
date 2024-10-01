@@ -1,13 +1,14 @@
 // An object enhancing signatures with info about the signer,
 // and serilization functions
 use crate::{
+    consts,
     crypto_structures::babyjubjub,
     io_utils,
     serialization::{ark_de, ark_se},
     Error,
-    consts,
 };
 use ark_bn254::Fr as Fq;
+use ark_std::str::FromStr;
 use babyjubjub_ark::Fr;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,16 @@ pub struct Signature {
     pub ry: Fq,
 }
 
+impl Signature {
+    // To represent a signature as a vector of Base fields (Fq),
+    // we treat the Scalar Field element (Fr, signature.s) as Fq.
+    pub fn to_fq_vec(&self) -> Vec<Fq> {
+        let s_str_dec = &self.s.to_string();
+
+        vec![Fq::from_str(s_str_dec).unwrap(), self.rx, self.ry]
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignatureAndSigner {
     pub signature: Signature,
@@ -31,7 +42,8 @@ impl SignatureAndSigner {
     // Signs a hash. Returns a signature struct
     pub fn sign_hash(hash_bn254: Fq) -> Result<SignatureAndSigner, Error> {
         // Construct full path to the private key file
-        let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+        let privkey_path_filename =
+            consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
 
         // Check if private key file exists
         if !io_utils::file_exists("", &privkey_path_filename)? {

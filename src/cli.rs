@@ -74,13 +74,13 @@ pub enum Commands {
 
     /// Proves you're a unique human (or alien) to someone.
     Prove {
-        /// What to prove ("human" or "alien"). Default is "human".
-        #[arg(long, value_parser = ["human", "alien"], default_value = "human")]
-        what: String,
+        /// Specifies the type of certificate. Default is "babyjubjub".
+        #[arg(long, default_value = "babyjubjub")]
+        cert_format: String,
 
-        /// To whom to prove your uniqueness.
-        #[arg(long, default_value = "")]
-        to_whom: String,
+        /// What to prove. Default is "human".
+        #[arg(long, default_value = "human")]
+        proof_format: String,
     },
 }
 
