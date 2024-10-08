@@ -1,4 +1,5 @@
 use super::document::Format;
+use crate::commands::prove::Member;
 use crate::crypto_structures::{
     certificate::Cert,
     document::{self, Document, DocumentField, FieldType, FieldTypeName, FormatField},
@@ -38,14 +39,21 @@ pub struct ProofInput {
     private: Vec<FormatField>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HashPath {
+    pub index: u32,
+    pub path: Vec<String>,
+}
+
 // Reads proof.toml from the proof_format of the cert_format.
 // Fill up accordingly using existing data and inquire crate
 // returns a vecotr of DocumentField to be added to the rest of the proof data
-pub fn creat_proof_input(
+pub fn create_proof_input(
     cert_format: String,
     proof_format: String,
     mut cert: Cert,
     signature_and_signer: SignatureAndSigner,
+    signer_society_details: Member,
 ) -> Document {
     let mut proof_input_parameters: Vec<DocumentField> = Vec::new();
 
@@ -68,14 +76,41 @@ pub fn creat_proof_input(
     let signer_cert_field = DocumentField {
         format_field: FormatField {
             fname: "signer".to_string(),
-            fdescription: "singer of the certificate".to_string(),
+            fdescription: "Singer of the certificate".to_string(),
             ftype: FieldTypeName::BabyjubjubPubkey,
         },
         field: FieldType::BabyjubjubPubkey(signature_and_signer.signer),
     };
     proof_input_parameters.push(signer_cert_field);
 
-    // Eead additional fields from proof.toml
+    // Add signature
+    let signature_cert_field = DocumentField {
+        format_field: FormatField {
+            fname: "signature".to_string(),
+            fdescription: "The certificate signature".to_string(),
+            ftype: FieldTypeName::Signature,
+        },
+        field: FieldType::Signature(signature_and_signer.signature),
+    };
+    proof_input_parameters.push(signature_cert_field);
+
+    // Add hashpath for signer
+    let signer_hash_path = HashPath {
+        index: signer_society_details.index,
+        path: signer_society_details.path,
+    };
+
+    let hash_path_cert_field = DocumentField {
+        format_field: FormatField {
+            fname: "hash_path".to_string(),
+            fdescription: "The hash path of the signer".to_string(),
+            ftype: FieldTypeName::HashPath,
+        },
+        field: FieldType::HashPath(signer_hash_path),
+    };
+    proof_input_parameters.push(hash_path_cert_field);
+
+    // Add additional fields from proof.toml
 
     // First calculate the certificate formats path
     let formats_folder_path = consts::DATA_DIR.to_string() + "/" + consts::CERTIFICATE_FORMATS;

@@ -54,8 +54,9 @@ fn main() -> Result<(), Error> {
         Commands::Prove {
             cert_format,
             proof_format,
+            no_execute,
         } => {
-            commands::prove::prove(cert_format, proof_format)?;
+            commands::prove::prove(cert_format, proof_format, *no_execute)?;
         }
     }
 

@@ -1,6 +1,6 @@
 use crate::{
     commands,
-    crypto_structures::{babyjubjub, signature, woolball::WoolballName},
+    crypto_structures::{babyjubjub, proof_input, signature, woolball::WoolballName},
     serialization,
 };
 pub use ark_bn254::Fr as Fq;
@@ -32,6 +32,7 @@ pub enum FieldType {
         deserialize_with = "serialization::ark_de"
     )]
     SignedText(String), // Text that requires a digital signature
+    HashPath(proof_input::HashPath),
 }
 
 /// Enum for field type names, used to define the type of a field without holding values.
@@ -48,6 +49,7 @@ pub enum FieldTypeName {
     Signature,
     Hash,
     SignedText,
+    HashPath,
 }
 
 /// Defines a field format with a name, description, and its type.
@@ -153,6 +155,18 @@ impl Document {
                     // push signature
                     let mut signature_vec = signature.to_fq_vec();
                     document_vec.append(&mut signature_vec);
+                }
+
+                FieldType::HashPath(ref hash_path) => {
+                    // Convert the index to Fq and push to the document_vec
+                    let index_fq = Fq::from(hash_path.index);
+                    document_vec.push(index_fq);
+
+                    // Convert each element in the path (Vec<String>) to Fq and push to the document_vec
+                    for path_element in &hash_path.path {
+                        let path_element_fq = babyjubjub::message_to_fq_vec(path_element).unwrap();
+                        document_vec.push(path_element_fq);
+                    }
                 }
             }
         }
@@ -274,6 +288,27 @@ impl Document {
                     sub_table.insert("s".to_string(), Value::String(signature_message.s));
                     sub_table.insert("rx".to_string(), Value::String(signature_message.rx));
                     sub_table.insert("ry".to_string(), Value::String(signature_message.ry));
+
+                    toml_table.insert(
+                        document_field.format_field.fname.clone(),
+                        Value::Table(sub_table),
+                    );
+                }
+
+                FieldType::HashPath(hash_path) => {
+                    // Create a sub-table for HashPath
+                    let mut sub_table = Map::new();
+
+                    // Insert index
+                    sub_table.insert("index".to_string(), Value::Integer(hash_path.index as i64));
+
+                    // Insert path (Vec<String>)
+                    let path_values: Vec<Value> = hash_path
+                        .path
+                        .iter()
+                        .map(|p| Value::String(p.clone()))
+                        .collect();
+                    sub_table.insert("path".to_string(), Value::Array(path_values));
 
                     toml_table.insert(
                         document_field.format_field.fname.clone(),

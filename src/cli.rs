@@ -78,9 +78,13 @@ pub enum Commands {
         #[arg(long, default_value = "babyjubjub")]
         cert_format: String,
 
-        /// What to prove. Default is "human".
-        #[arg(long, default_value = "human")]
+        /// What to prove. Default is "personhood".
+        #[arg(long, default_value = "personhood")]
         proof_format: String,
+
+        /// To execute or not?
+        #[clap(long, short, action)]
+        no_execute: bool,
     },
 }
 

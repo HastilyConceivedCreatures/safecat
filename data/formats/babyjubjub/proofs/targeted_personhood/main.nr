@@ -14,9 +14,9 @@ struct Person {
 
 // Struct representing a digital signature, with components s, rx, and ry
 struct Signature {
-    s: Field,
     rx: Field,
-    ry: Field
+    ry: Field,
+    s: Field
 }
 
 // Struct representing a certificate
@@ -25,6 +25,13 @@ struct Certificate {
     person: Person,
     expiration: Field,
     birthdate: Field
+}
+
+struct ToWhomObject {
+    hash: Field,
+    rx: Field,
+    ry: Field,
+    s: Field
 }
 
 // Struct representing a hash path in a Merkle tree
@@ -60,15 +67,14 @@ impl Certificate {
 /// * `to_whom_signature` - The signature from the recipient entity or person.
 fn main(
     cert_type: Field,
-    person: pub Person,
+    BabyjubjubPubkey: pub Person,
     society: pub Field,
-    last_checked_timestamp: pub Field,
-    expiration: Field,
-    signers: [ Person; 1],
+    LastCheckedTimestamp: pub Field,
+    Expiration: Field,
+    signer: [ Person; 1],
     signatures: [ Signature; 1],
     signers_hash_path: [HashPath; 1],
-    to_whom: pub Field,
-    to_whom_signature: Signature,
+    ToWhom: pub ToWhomObject,
 ) {
     // Verify that the current timestamp is before the certificate expiration date
     assert(last_checked_timestamp.lt(expiration));

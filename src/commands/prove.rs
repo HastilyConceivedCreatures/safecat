@@ -1,4 +1,6 @@
-use crate::crypto_structures::{certificate::Cert, proof_input, signature::SignatureAndSigner};
+use crate::crypto_structures::{
+    babyjubjub::PubKey, certificate::Cert, proof_input, signature::SignatureAndSigner,
+};
 use crate::{consts, Error};
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +13,7 @@ use toml;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
-pub fn prove(cert_format: &String, proof_format: &String) -> io::Result<()> {
+pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> io::Result<()> {
     // Stating what we prove
     println!(
         "proving claim {} {} {} for format {} {}. {}",
@@ -23,15 +25,20 @@ pub fn prove(cert_format: &String, proof_format: &String) -> io::Result<()> {
         consts::RESET_COLOR_ANSI,
     );
 
+    // Find relevant certificate
     let (found_cert, found_signature) = find_cert_and_signature("certs/received", cert_format)
         .expect("Did not find any fitting certificates.");
 
+    // Find the hash path of the signers of the certificate
+    let member = find_hash_path(found_signature.signer);
+
     // Create a document with proof input
-    let proof_input_document = proof_input::creat_proof_input(
+    let proof_input_document = proof_input::create_proof_input(
         (*cert_format).clone(),
         proof_format.clone(),
         found_cert,
         found_signature,
+        member,
     );
 
     // Serialize to TOML and write to output file
@@ -40,6 +47,12 @@ pub fn prove(cert_format: &String, proof_format: &String) -> io::Result<()> {
     fs::write("data/Prover.toml", toml_string).expect("Unable to write prover.toml");
 
     println!("Successfully wrote data/Prover.toml");
+
+    if no_execute {
+        println!("NOT EXECUTING INDEED!");
+    } else {
+        println!("EXECUTING!");
+    }
 
     // prove_with_nargo_bb();
     // } else {
@@ -56,12 +69,12 @@ struct TrustKernel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Member {
+pub struct Member {
     name: String,
     x: String,
     y: String,
-    index: u32,
-    path: Vec<String>,
+    pub index: u32,
+    pub path: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -77,12 +90,6 @@ struct Signer {
     y: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct SignersHashPath {
-    index: u32,
-    path: Vec<String>,
-}
-
 fn find_cert_and_signature(
     files_path: &str,
     cert_format: &str,
@@ -95,7 +102,7 @@ fn find_cert_and_signature(
     let mut found_cert_option: Option<Cert> = None;
     let mut found_signature_option: Option<SignatureAndSigner> = None;
 
-    // Step 2: Read type of each file until it finds a file where type equals "what"
+    // Step 2: Read type of each file until it finds a file where type equals "cert_format"
     for file in files {
         let entry = file?;
         let path = entry.path();
@@ -124,13 +131,32 @@ fn find_cert_and_signature(
     }
 
     // Return the found Cert and Signature, or an error if not found
-    if let (Some(cert), Some(signature)) = (found_cert_option, found_signature_option) {
-        Ok((cert, signature))
+    if let (Some(cert), Some(signature_and_signer)) = (found_cert_option, found_signature_option) {
+        Ok((cert, signature_and_signer))
     } else {
         Err(Box::from(
             "Did not find any fitting certificates or signatures",
         ))
     }
+}
+
+fn find_hash_path(signer: PubKey) -> Member {
+    // Extract details from Cert
+    let signer_id = signer.to_hex_str();
+
+    // Read the JSON data
+    let trust_kernel_json = fs::read_to_string("data/societies/woolball.json")
+        .expect("Unable to read trust_kernel.json");
+    let trust_kernel: TrustKernel =
+        serde_json::from_str(&trust_kernel_json).expect("JSON was not well-formatted");
+
+    // Find the specified member
+    let member_opt = trust_kernel
+        .members
+        .iter()
+        .find(|m| m.name.to_lowercase() == signer_id.to_lowercase());
+
+    member_opt.expect("Didn't find member").clone()
 }
 
 // fn prove_with_nargo_bb() {
