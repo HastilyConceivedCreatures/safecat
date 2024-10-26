@@ -1,7 +1,7 @@
 use crate::{cast, consts, crypto_structures::signature, io_utils, serialization, Error};
 pub use ark_bn254::Fr as Fq; // Fr (scalar field) of BN254 is the Fq (base field) of Babyjubjub
 use ark_std::str::FromStr; // import to use from_str in structs
-use babyjubjub_ark::{new_key, Fr, Point, PrivateKey};
+use babyjubjub_ark::{new_key, Fr, PrivateKey};
 use chrono::{DateTime, Utc}; // for date_to_fq
 use num::{BigUint, Num};
 use poseidon_ark::Poseidon;
@@ -42,15 +42,6 @@ impl PubKey {
 
     pub fn to_fq_vec(&self) -> Vec<Fq> {
         vec![self.x, self.y]
-    }
-
-    pub fn from_point(point: Point) -> PubKey {
-        let pubkey = PubKey {
-            x: point.x,
-            y: point.y,
-        };
-
-        pubkey
     }
 
     pub fn to_hex_str(&self) -> String {

@@ -1,9 +1,9 @@
 [[to]]
-fname = "BabyjubjubPubkey"
+fname = "babyjubjubPubkey"
 fdescription = "BabyjubjubPubkey (128 hex): "
 ftype = "BabyjubjubPubkey"
 
 [[body]]
-fname = "Expiration"
+fname = "expiration"
 fdescription = "Expiration Date"
 ftype = "Timestamp"

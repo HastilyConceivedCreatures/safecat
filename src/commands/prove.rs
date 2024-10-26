@@ -1,36 +1,28 @@
-use crate::crypto_structures::{
-    babyjubjub::PubKey, certificate::Cert, proof_input, signature::SignatureAndSigner,
-};
-use crate::{consts, Error};
+use crate::crypto_structures::{certificate::Cert, proof_input, signature::SignatureAndSigner};
+use crate::{consts, io_utils, Error};
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml;
-use zip::write::SimpleFileOptions;
-use zip::ZipWriter;
 
-pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> io::Result<()> {
+pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> Result<(), Error> {
     // Stating what we prove
     println!(
         "proving claim {} {} {} for format {} {}. {}",
-        consts::RED_COLOR_ANSI,
+        consts::SOFT_BLUE_COLOR_ANSI,
         proof_format,
         consts::RESET_COLOR_ANSI,
-        consts::RED_COLOR_ANSI,
+        consts::SOFT_BLUE_COLOR_ANSI,
         cert_format,
         consts::RESET_COLOR_ANSI,
     );
 
     // Find relevant certificate
-    let (found_cert, found_signature) = find_cert_and_signature("certs/received", cert_format)
-        .expect("Did not find any fitting certificates.");
-
-    // Find the hash path of the signers of the certificate
-    let member = find_hash_path(found_signature.signer);
+    let (found_cert, found_signature) = find_cert_and_signature("certs/received", cert_format)?;
 
     // Create a document with proof input
     let proof_input_document = proof_input::create_proof_input(
@@ -38,56 +30,27 @@ pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> i
         proof_format.clone(),
         found_cert,
         found_signature,
-        member,
-    );
+    )?;
 
     // Serialize to TOML and write to output file
     let prover_toml = proof_input_document.to_toml_table();
-    let toml_string = toml::to_string_pretty(&prover_toml).expect("Failed to serialize TOML");
-    fs::write("data/Prover.toml", toml_string).expect("Unable to write prover.toml");
+    let toml_string =
+        toml::to_string_pretty(&prover_toml).map_err(|_| "Failed to serialize TOML")?;
+    fs::write("data/Prover.toml", toml_string).map_err(|_| "Unable to write prover.toml")?;
 
     println!("Successfully wrote data/Prover.toml");
 
+    prepare_noir_project(cert_format, proof_format)?;
+
     if no_execute {
-        println!("NOT EXECUTING INDEED!");
+        io_utils::copy_temp_to_output()?;
     } else {
-        println!("EXECUTING!");
+        prove_with_nargo_bb()?;
     }
 
-    // prove_with_nargo_bb();
-    // } else {
-    //     eprintln!("Member '{}' not found", signer_id);
-    // }
+    io_utils::erase_temp_contents()?;
 
     Ok(())
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct TrustKernel {
-    root: String,
-    members: Vec<Member>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Member {
-    name: String,
-    x: String,
-    y: String,
-    pub index: u32,
-    pub path: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureToml {
-    s: String,
-    rx: String,
-    ry: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Signer {
-    x: String,
-    y: String,
 }
 
 fn find_cert_and_signature(
@@ -96,7 +59,8 @@ fn find_cert_and_signature(
 ) -> Result<(Cert, SignatureAndSigner), Error> {
     // Get the list of files from certs/received folder
     let certs_path = Path::new(files_path);
-    let files = fs::read_dir(certs_path)?;
+    let files = fs::read_dir(certs_path)
+        .map_err(|_| format!("folder '{}' doesn't exist", certs_path.display()))?;
 
     // These variables will hold the certificates and signatures we find
     let mut found_cert_option: Option<Cert> = None;
@@ -140,90 +104,116 @@ fn find_cert_and_signature(
     }
 }
 
-fn find_hash_path(signer: PubKey) -> Member {
-    // Extract details from Cert
-    let signer_id = signer.to_hex_str();
+fn prove_with_nargo_bb() -> Result<(), Error> {
+    // Change the current working directory to 'data/NoirTargetedProofs'
+    let data_noir_dir = consts::TEMP_FOLDER;
 
-    // Read the JSON data
-    let trust_kernel_json = fs::read_to_string("data/societies/woolball.json")
-        .expect("Unable to read trust_kernel.json");
-    let trust_kernel: TrustKernel =
-        serde_json::from_str(&trust_kernel_json).expect("JSON was not well-formatted");
+    // Execute the first command
+    let nargo_output = Command::new("nargo")
+        .arg("execute")
+        .arg("witness-human")
+        .current_dir(data_noir_dir)
+        .output()
+        .map_err(|_| "Failed to execute nargo command")?;
 
-    // Find the specified member
-    let member_opt = trust_kernel
-        .members
-        .iter()
-        .find(|m| m.name.to_lowercase() == signer_id.to_lowercase());
+    // Check if the nargo command was successful
+    if !nargo_output.status.success() {
+        eprintln!("nargo command failed with output: {:?}", nargo_output);
+        std::process::exit(1);
+    }
 
-    member_opt.expect("Didn't find member").clone()
+    // Execute the second command
+    let bb_output = Command::new("bb")
+        .arg("prove")
+        .arg("-b")
+        .arg("./target/verify_certificates.json")
+        .arg("-w")
+        .arg("./target/witness-human.gz")
+        .arg("-o")
+        .arg("./target/proof")
+        .current_dir(data_noir_dir)
+        .output()
+        .map_err(|_| "Failed to execute bb command")?;
+
+    // Check if the bb command was successful
+    if bb_output.status.success() && bb_output.stdout.is_empty() {
+        println!("Proof succeed! The proof is in file target/proof");
+    } else {
+        eprintln!("bb command failed with output: {:?}", bb_output);
+        std::process::exit(1);
+    }
+
+    // Path to the target directory
+    // Path to the target directory
+    let target_dir = Path::new(data_noir_dir).join("target");
+    let proof_src = target_dir.join("proof");
+    let proof_dest = Path::new(&consts::DATA_DIR).join("proof");
+
+    // Copy the proof file to the DATA_DIR
+    fs::copy(&proof_src, &proof_dest).map_err(|e| format!("Failed to copy proof file: {}", e))?;
+
+    Ok(())
 }
 
-// fn prove_with_nargo_bb() {
-//     // Change the current working directory to 'data/NoirTargetedProofs'
-//     let data_noir_dir = "data/NoirTargetedProofs";
+// Main function as requested
+fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()> {
+    let temp_folder = Path::new(consts::TEMP_FOLDER);
 
-//     // Execute the first command
-//     let nargo_output = Command::new("nargo")
-//         .arg("execute")
-//         .arg("witness-human")
-//         .current_dir(data_noir_dir)
-//         .output()
-//         .expect("Failed to execute nargo command");
+    let noir_template_folder_path =
+        consts::DATA_DIR.to_string() + "/" + consts::NOIR_TEMPLATE_FOLDER;
+    let noir_template_folder = Path::new(&noir_template_folder_path);
 
-//     // Check if the nargo command was successful
-//     if !nargo_output.status.success() {
-//         eprintln!("nargo command failed with output: {:?}", nargo_output);
-//         std::process::exit(1);
-//     }
+    // Step 1: Delete everything in 'temp' folder, recreate it
+    io_utils::recreate_folder(temp_folder)?;
 
-//     // Execute the second command
-//     let bb_output = Command::new("bb")
-//         .arg("prove")
-//         .arg("-b")
-//         .arg("./target/verify_certificates.json")
-//         .arg("-w")
-//         .arg("./target/witness-human.gz")
-//         .arg("-o")
-//         .arg("./target/proof")
-//         .current_dir(data_noir_dir)
-//         .output()
-//         .expect("Failed to execute bb command");
+    // Step 2: Copy everything from 'noir_project_template' to 'temp'
+    io_utils::copy_dir_all(noir_template_folder, temp_folder)?;
 
-//     // Check if the bb command was successful
-//     if bb_output.status.success() && bb_output.stdout.is_empty() {
-//         println!("Proof succeed! The proof is in file target/proof");
-//     } else {
-//         eprintln!("bb command failed with output: {:?}", bb_output);
-//         std::process::exit(1);
-//     }
+    // Step 3: Copy main.nr file from data/formats/<cert_format>/proofs/<proof_format>/main.nr
+    let main_nr_src = PathBuf::from(format!(
+        "data/formats/{}/proofs/{}/main.nr",
+        cert_format, proof_format
+    ));
+    let main_nr_dst = temp_folder.join("src/main.nr");
 
-//     // Path to the target directory
-//     let target_dir = Path::new(data_noir_dir).join("target");
+    // Create src folder in temp if it doesn't exist
+    if let Some(parent) = main_nr_dst.parent() {
+        fs::create_dir_all(parent)?;
+    }
 
-//     // Create a zip file containing 'hello_world.json' and 'proof'
-//     let zip_file_path = target_dir.join("output.zip");
-//     let zip_file = File::create(&zip_file_path).expect("Failed to create zip file");
-//     let mut zip_writer = ZipWriter::new(zip_file);
+    // Copy the file, overwrite if needed
+    fs::copy(main_nr_src, main_nr_dst)?;
 
-//     // Specify the compression method (e.g., Stored or Deflated)
-//     let options = SimpleFileOptions::default()
-//         .compression_method(zip::CompressionMethod::Stored)
-//         .unix_permissions(0o755);
+    // Step 4: Copy Prover.toml from data/Prover.toml to temp folder
+    let prover_toml_src_path = consts::DATA_DIR.to_string() + "/Prover.toml";
+    let prover_toml_src = Path::new(&prover_toml_src_path);
+    let prover_toml_dst = temp_folder.join("Prover.toml");
 
-//     // Files to include in the zip
-//     let files_to_zip = vec!["verify_certificates.json", "proof"];
+    // Copy the Prover.toml file to the temp directory, overwrite if needed
+    fs::copy(prover_toml_src, prover_toml_dst)?;
 
-//     for file_name in &files_to_zip {
-//         let file_path = target_dir.join(file_name);
-//         let mut file = File::open(&file_path).expect("Failed to open file");
+    Ok(())
+}
 
-//         zip_writer
-//             .start_file(file_name, options)
-//             .expect("Failed to add file to zip");
+// These structs are used to give the Toml file a nice structure
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Member {
+    pub name: String,
+    x: String,
+    y: String,
+    pub index: u32,
+    pub path: Vec<String>,
+}
 
-//         io::copy(&mut file, &mut zip_writer).expect("Failed to write file to zip");
-//     }
+#[derive(Serialize, Deserialize, Debug)]
+struct SignatureToml {
+    s: String,
+    rx: String,
+    ry: String,
+}
 
-//     zip_writer.finish().expect("Failed to finalize zip file");
-// }
+#[derive(Serialize, Deserialize, Debug)]
+struct Signer {
+    x: String,
+    y: String,
+}

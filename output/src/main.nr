@@ -24,7 +24,6 @@ struct Certificate {
     cert_type: Field,
     person: Person,
     expiration: Field,
-    birthdate: Field
 }
 
 struct ToWhomObject {
@@ -43,8 +42,8 @@ struct HashPath {
 impl Certificate {
     // Method to hash the certificate data using the Poseidon hash function
     fn hash(self) -> Field {
-        let certificate_as_array : [Field; 5] = [self.cert_type, self.person.x, self.person.y, self.birthdate, self.expiration];
-        std::hash::poseidon::bn254::hash_5(certificate_as_array)
+        let certificate_as_array : [Field; 4] = [self.cert_type, self.person.x, self.person.y, self.expiration];
+        std::hash::poseidon::bn254::hash_4(certificate_as_array)
     }
 }
 
@@ -68,45 +67,44 @@ impl Certificate {
 fn main(
     cert_type: Field,
     BabyjubjubPubkey: pub Person,
-    society: pub Field,
+    society_root: pub Field,
     lastCheckedTimestamp: pub Field,
     expiration: Field,
-    signer: [ Person; 1],
-    signature: [ Signature; 1],
-    hash_path: [HashPath; 1],
+    signer: Person,
+    signature: Signature,
+    hash_path: HashPath,
     toWhom: pub ToWhomObject,
 ) {
     // Verify that the current timestamp is before the certificate expiration date
-    assert(last_checked_timestamp.lt(expiration));
+    assert(lastCheckedTimestamp.lt(expiration));
 
     // Create a Certificate struct with type 1 (birth certificate)
     let certificate = Certificate {
         cert_type: cert_type,
-        person: person,
-        birthdate: birthdate,
+        person: BabyjubjubPubkey,
         expiration: expiration
     };
 
-    print(to_whom_signature);
+    // print(to_whom_signature);
 
-    // Verify signatures
-    let verify_signature = dep::std::eddsa::eddsa_poseidon_verify(signers[0].x, signers[0].y, signatures[0].s, signatures[0].rx, signatures[0].ry, certificate.hash());
+    // // Verify signatures
+    let verify_signature = dep::std::eddsa::eddsa_poseidon_verify(signer.x, signer.y, signature.s, signature.rx, signature.ry, certificate.hash());
 
-    // Calculate the Merkle root using the first signer hash path
-    let leaf_signer : Field = std::hash::pedersen_hash([signers[0].x, signers[0].y]);
+    // // Calculate the Merkle root using the first signer hash path
+    let leaf_signer : Field = std::hash::pedersen_hash([signer.x, signer.y]);
 
-    // Calculate the Merkle root using the second signer hash path
-    let merkel_root = std::merkle::compute_merkle_root(leaf_signer, signers_hash_path[0].index, signers_hash_path[0].path);
+    // // Calculate the Merkle root using the second signer hash path
+    let merkel_root = std::merkle::compute_merkle_root(leaf_signer, hash_path.index, hash_path.path);
 
-    // Verify that the calculated Merkle roots match the trust kernel root
-    assert(merkel_root == society);
+    // // Verify that the calculated Merkle roots match the trust kernel root
+    assert(merkel_root == society_root);
 
-    // Verify signature on to_whom
-    let verify_signature_on_to_whom = dep::std::eddsa::eddsa_poseidon_verify(person.x, person.y, to_whom_signature.s, to_whom_signature.rx, to_whom_signature.ry, to_whom);    
+    // // Verify signature on to_whom
+    let verify_signature_on_to_whom = dep::std::eddsa::eddsa_poseidon_verify(BabyjubjubPubkey.x, BabyjubjubPubkey.y, toWhom.s, toWhom.rx, toWhom.ry, toWhom.hash);    
 
-    // Verify that both signatures are correct
+    // // Verify that both signatures are correct
     assert(verify_signature);
 
-    // Verify that the proof is signed for to_whom
+    // // Verify that the proof is signed for to_whom
     assert(verify_signature_on_to_whom); 
 }
