@@ -43,7 +43,7 @@ impl SignatureAndSigner {
     pub fn sign_hash(hash_bn254: Fq) -> Result<SignatureAndSigner, Error> {
         // Construct full path to the private key file
         let privkey_path_filename =
-            consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+            consts::OUTPUT_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
 
         // Check if private key file exists
         if !io_utils::file_exists("", &privkey_path_filename)? {

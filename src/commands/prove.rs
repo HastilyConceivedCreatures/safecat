@@ -106,7 +106,7 @@ fn find_cert_and_signature(
 
 fn prove_with_nargo_bb() -> Result<(), Error> {
     // Change the current working directory to 'data/NoirTargetedProofs'
-    let data_noir_dir = consts::TEMP_FOLDER;
+    let data_noir_dir = consts::TEMP_DIR;
 
     // Execute the first command
     let nargo_output = Command::new("nargo")
@@ -157,7 +157,7 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
 
 // Main function as requested
 fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()> {
-    let temp_folder = Path::new(consts::TEMP_FOLDER);
+    let temp_folder = Path::new(consts::TEMP_DIR);
 
     let noir_template_folder_path =
         consts::DATA_DIR.to_string() + "/" + consts::NOIR_TEMPLATE_FOLDER;

@@ -35,10 +35,10 @@ fn run() -> Result<(), Error> {
     // Match the subcommand and execute the corresponding logic
     match &cli.command {
         Commands::Generate => {
-            commands::generate::generate(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)?
+            commands::generate::generate(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME)?
         }
         Commands::ShowKeys { format } => {
-            commands::show_keys::show_keys(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME, format)?
+            commands::show_keys::show_keys(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME, format)?
         }
         Commands::Sign {
             format,

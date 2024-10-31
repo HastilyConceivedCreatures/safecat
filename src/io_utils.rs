@@ -33,14 +33,14 @@ pub fn split_hex_string(input: &str) -> (String, String) {
 
 // saves a certificate
 pub fn save_certificate(cert: Cert, signature: SignatureAndSigner) -> Result<String, Error> {
-    // certificates folder
+    // certificates directory
     let path = "certs/created";
 
-    // Check if the folder exists
+    // Check if the directory exists
     let path_exists = fs::metadata(path).is_ok();
 
     if !path_exists {
-        // If the folder doesn't exist, create it
+        // If the directory doesn't exist, create it
         fs::create_dir_all(path).map_err(|e| format!("Can't create folder: {}", e))?;
         println!("Folder '{}' created successfully.", path);
     }
@@ -118,16 +118,22 @@ pub fn recreate_folder(folder_path: &Path) -> io::Result<()> {
 }
 
 pub fn copy_temp_to_output() -> Result<(), io::Error> {
-    let temp_path = Path::new(consts::TEMP_FOLDER);
-    let output_path = Path::new(consts::OUTPUT_FOLDER);
+    let temp_path = Path::new(consts::TEMP_DIR);
+    let output_path = Path::new(consts::OUTPUT_DIR);
 
-    // Create the output directory if it doesn't exist
+    let noir_path_str = consts::OUTPUT_DIR.to_string() + "/noir";
+    let noir_path = Path::new(&noir_path_str);
+
+    // Create the output and noir directory if it doesn't exist
     if !output_path.exists() {
-        fs::create_dir_all(output_path)?;
+        fs::create_dir_all(noir_path)?;
+    }
+    if !noir_path.exists() {
+        fs::create_dir_all(noir_path)?;
     }
 
     // Recursively copy the contents of the temp directory
-    copy_dir_all(temp_path, output_path)?;
+    copy_dir_all(temp_path, noir_path)?;
 
     Ok(())
 }
@@ -158,7 +164,7 @@ pub fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), io::Error> {
 }
 
 pub fn erase_temp_contents() -> Result<(), io::Error> {
-    let temp_path = Path::new(consts::TEMP_FOLDER);
+    let temp_path = Path::new(consts::TEMP_DIR);
 
     // Check if the temp directory exists
     if temp_path.exists() {
