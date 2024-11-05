@@ -60,19 +60,19 @@ Install Rust, and run `cargo build`. Last tested with `cargo 1.80.0`.
 
 6. `safecat prove <cert_format> <proof_format>`. Creates a zero-knowledge proof using nargo and Barretenberg (by Ztec), based on specified certificate and proof formats. By default, the command assumes the `babyjubjub` certificate format and `personhood` proof format, which are the most common use cases.
 
-Safecat searches for the `.toml` certificate and proof format specifications in the `data/formats` folder. For example, specifying the certificate format as `babyjubjub` and the proof format as `personhood` would look for `data/formats/babyjubjub/format.toml` and `data/formats/babyjubjub/proofs/personhood/proof.toml`, respectively.
+    Safecat searches for the `.toml` certificate and proof format specifications in the `data/formats` folder. For example, specifying the certificate format as `babyjubjub` and the proof format as `personhood` would look for `data/formats/babyjubjub/format.toml` and `data/formats/babyjubjub/proofs/personhood/proof.toml`, respectively.
 
-Example usage:
+    Example usage:
 
-```
-safecat prove --cert-format babyjubjub --proof-format personhood
-```
+    ```
+    safecat prove --cert-format babyjubjub --proof-format personhood
+    ```
 
-Additional flags:
+    Additional flags:
 
-    `--no-execute`: Skips execution if set. This flag is optional and can be triggered with `-n` or `--no-execute`. If set then a Noir program for the proof is set but not executed.
+    Flag `--no-execute`. Skips execution if set. This flag is optional and can be triggered with `-n` or `--no-execute`. If set then a Noir program for the proof is set but not executed.
 
-Proofs are saved in the `output` folder.
+    Proofs are saved in the `output` folder.
 
 
 ## Directories structure
