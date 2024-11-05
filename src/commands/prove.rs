@@ -1,6 +1,7 @@
 use crate::crypto_structures::{certificate::Cert, proof_input, signature::SignatureAndSigner};
 use crate::{consts, io_utils, Error};
 
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
@@ -36,14 +37,16 @@ pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> R
     let prover_toml = proof_input_document.to_toml_table();
     let toml_string =
         toml::to_string_pretty(&prover_toml).map_err(|_| "Failed to serialize TOML")?;
-    fs::write("data/Prover.toml", toml_string).map_err(|_| "Unable to write prover.toml")?;
+    let prover_path = Path::new(consts::DATA_DIR).join("Prover.toml");
 
-    println!("Successfully wrote data/Prover.toml");
+    fs::write(&prover_path, toml_string).map_err(|_| "Unable to write Prover.toml")?;
+    println!("Successfully wrote {:?}", prover_path);
 
     prepare_noir_project(cert_format, proof_format)?;
 
     if no_execute {
         io_utils::copy_temp_to_output()?;
+        println!("The Noir program is located to {}/noir", consts::OUTPUT_DIR);
     } else {
         prove_with_nargo_bb()?;
     }
@@ -105,7 +108,7 @@ fn find_cert_and_signature(
 }
 
 fn prove_with_nargo_bb() -> Result<(), Error> {
-    // Change the current working directory to 'data/NoirTargetedProofs'
+    // Change the current working directory to temp
     let data_noir_dir = consts::TEMP_DIR;
 
     // Execute the first command
@@ -144,13 +147,14 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
     }
 
     // Path to the target directory
-    // Path to the target directory
     let target_dir = Path::new(data_noir_dir).join("target");
     let proof_src = target_dir.join("proof");
-    let proof_dest = Path::new(&consts::DATA_DIR).join("proof");
+    let datetime = Local::now().format("%Y%m%d_%H%M%S"); // Format as "YYYYMMDD_HHMMSS"
+    let proof_dest = Path::new(&consts::OUTPUT_DIR).join(format!("proof_{}", datetime));
 
-    // Copy the proof file to the DATA_DIR
+    // Copy the proof file
     fs::copy(&proof_src, &proof_dest).map_err(|e| format!("Failed to copy proof file: {}", e))?;
+    println!("The proof was move to {:?}", proof_dest);
 
     Ok(())
 }
@@ -171,7 +175,7 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
 
     // Step 3: Copy main.nr file from data/formats/<cert_format>/proofs/<proof_format>/main.nr
     let main_nr_src = PathBuf::from(format!(
-        "data/formats/{}/proofs/{}/main.nr",
+        "data/formats/{}/proofs/{}/src/main.nr",
         cert_format, proof_format
     ));
     let main_nr_dst = temp_folder.join("src/main.nr");
@@ -184,12 +188,11 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
     // Copy the file, overwrite if needed
     fs::copy(main_nr_src, main_nr_dst)?;
 
-    // Step 4: Copy Prover.toml from data/Prover.toml to temp folder
+    // Step 4: Copy Prover.toml from DATA_DIR/Prover.toml to temp folder
     let prover_toml_src_path = consts::DATA_DIR.to_string() + "/Prover.toml";
     let prover_toml_src = Path::new(&prover_toml_src_path);
     let prover_toml_dst = temp_folder.join("Prover.toml");
 
-    // Copy the Prover.toml file to the temp directory, overwrite if needed
     fs::copy(prover_toml_src, prover_toml_dst)?;
 
     Ok(())

@@ -72,13 +72,13 @@ pub enum Commands {
         _args: Vec<String>,
     },
 
-    /// Proves you're a unique human (or alien) to someone.
+    /// Creates a zk-proof using nargo and bb, for given ceritficate and proof formats.
     Prove {
-        /// Specifies the type of certificate. Default is "babyjubjub".
+        /// Specifies the type of certificate.
         #[arg(long, default_value = "babyjubjub")]
         cert_format: String,
 
-        /// What to prove. Default is "personhood".
+        /// What to prove.
         #[arg(long, default_value = "personhood")]
         proof_format: String,
 
