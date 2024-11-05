@@ -7,7 +7,7 @@ use num::{BigUint, Num};
 use poseidon_ark::Poseidon;
 pub use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -78,6 +78,11 @@ impl PrivKey {
 
         // Append a newline character to the JSON data
         json_data.push('\n');
+
+        // Ensure the directory exists
+        if let Some(parent_dir) = Path::new(file_path).parent() {
+            create_dir_all(parent_dir)?;
+        }
 
         // Create or open the file
         let mut file = File::create(Path::new(file_path))?;
