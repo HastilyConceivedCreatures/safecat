@@ -88,7 +88,7 @@ The data safecat use.
 
 - 'noir_project_template' (`NOIR_TEMPLATE_FOLDER`). This folder contains a template for a Noir project. When the user proves something the program copies this template and changes it based on the specific proof format for the `format` folder (described above).
 
-- `societies`. This folder includes json files of `societies`. A society is a collection of public keys of entities that are trusted to create certifiates. When you create a proof, you often specify in which "society" the certificates are made. This lets know to whoeever verify the proofs that they come from trusted entities.
+- `societies`. This folder includes json files of `societies`. A society is a collection of public keys of entities that are trusted to create certifiates. When you create a proof, you often specify in which "society" the certificates are made. This lets know to whoeever verify the proofs that they come from trusted entities. A society file is Merkle tree created from the trusted entities. We use [MPZ](https://github.com/eyalron33/mpz/) tool to create such files.
 
 - 'test_data'. You can ignore the data for tests for now.
 
