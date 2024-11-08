@@ -4,6 +4,6 @@ fdescription = "society name: "
 ftype = "Text"
 
 [[fields]]
-fname = "LastCheckedTimestamp"
+fname = "last_checked_timestamp"
 fdescription = "The last timestamp for which the proof was made: "
 ftype = "Timestamp"

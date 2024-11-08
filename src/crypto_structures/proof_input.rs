@@ -1,16 +1,21 @@
 use super::babyjubjub;
 use super::document::Format;
-use crate::commands::prove::Member;
 use crate::crypto_structures::{
-    babyjubjub::PubKey,
+    babyjubjub::{fq_to_str_hex, PubKey},
     certificate::Cert,
     document::{self, Document, DocumentField, FieldType, FieldTypeName, FormatField},
+    merkle_pederson::MerklePederson,
     signature::SignatureAndSigner,
+    society::{MemberSociety, Society},
 };
 use crate::{consts, Error};
 use serde::{Deserialize, Serialize};
-use std::fs::{self, OpenOptions};
-use std::io::Read; // import to use from_str in structs
+use std::io::{self, Read};
+use std::path::Path;
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+};
 
 /// Represents additional parameters needed to create a proof, extending `FieldType`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,6 +65,7 @@ pub fn create_proof_input(
     let mut proof_input_parameters: Vec<DocumentField> = Vec::new();
 
     let cert_hash = babyjubjub::message_to_fq_vec(&cert.cert_type)?;
+
     // Create a DocumentField for certificate type
     let cert_type_field = DocumentField {
         format_field: FormatField {
@@ -95,6 +101,9 @@ pub fn create_proof_input(
     // Find the hash path of the signers of the certificate
     let (signer_society_details, soceity_root) =
         find_hash_path(signature_and_signer.signer, &society)?;
+
+    // Add HashPath to Noir program (see explanation in function header)
+    insert_hashpath_code(&signer_society_details)?;
 
     // Add society root
     let society_root_field = DocumentField {
@@ -139,9 +148,6 @@ pub fn create_proof_input(
     })
 }
 
-// read_proof_format_from_file: read first certificate and add each field to the format, and then read the
-// proof toml and add more fields -> this is the proof format!
-
 // fill up the format from the certificate data
 /// Represents a certificate with recipient fields, and body fields
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,7 +167,7 @@ pub fn read_document_format_from_toml(file_name: &str) -> Result<document::Forma
 }
 
 // Return a tuple of the Member in the society and of a string of the society hash
-fn find_hash_path(signer: PubKey, society: &str) -> Result<(Member, String), Error> {
+fn find_hash_path(signer: PubKey, society: &str) -> Result<(MemberSociety, String), Error> {
     // Construct societies file path
     let societies_file_path =
         consts::DATA_DIR.to_string() + "/" + consts::SOCIENTY_FOLDER + "/" + society + ".json";
@@ -173,19 +179,32 @@ fn find_hash_path(signer: PubKey, society: &str) -> Result<(Member, String), Err
     let trust_kernel_json = fs::read_to_string(&societies_file_path)
         .map_err(|_| format!("Unable to read soceity file: {}", societies_file_path))?;
 
-    // Deserialize the JSON data into the TrustKernel struct, handling potential errors
-    let trust_kernel: TrustKernel =
+    // Deserialize the JSON data into the MerklePederson struct
+    let merkle_tree: MerklePederson =
         serde_json::from_str(&trust_kernel_json).map_err(|_| "JSON was not well-formatted")?;
 
+    // Create a society from the Merkle tree
+    let society = Society::from_merkle_pederson(merkle_tree);
+
     // Find the specified member by comparing lowercase names
-    let member = trust_kernel
+    let signer_x = fq_to_str_hex(&signer.x);
+    let signer_y = fq_to_str_hex(&signer.y);
+
+    let member = society
         .members
         .iter()
-        .find(|m| m.name.to_lowercase() == signer_id.to_lowercase())
+        .find(|m| {
+            // Remove "0x" prefix if it exists
+            let cleaned_mx = m.x.trim_start_matches("0x");
+            let cleaned_my = m.y.trim_start_matches("0x");
+
+            // Compare cleaned_signer_x and cleaned_signer_y with m.x and m.y
+            cleaned_mx == signer_x && cleaned_my == signer_y
+        })
         .ok_or_else(|| format!("Didn't find member with ID: {}", signer_id))?;
 
     // Extract society root from the trust kernel
-    let society_root: String = trust_kernel.root;
+    let society_root = society.root;
 
     // Return the member (cloned) and the society root
     Ok((member.clone(), society_root))
@@ -237,8 +256,41 @@ fn read_proof_input(
     Ok((society, proof_input_from_format))
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct TrustKernel {
-    root: String,
-    members: Vec<Member>,
+// Insert the HashPath variable into the Noir code.
+// This is needed since Noir doesn't support dynamic arrays, but we only know the
+// size of the array HashPath object needs after we find the details of whoever signed
+// the certificate in the society file the user specified.
+fn insert_hashpath_code(signer_society_details: &MemberSociety) -> Result<(), io::Error> {
+    let temp_folder = Path::new(consts::TEMP_DIR);
+    let main_nr_dst = temp_folder.join("src/main.nr");
+
+    // Read the contents of main.nr
+    let mut content = fs::read_to_string(&main_nr_dst)?;
+
+    // Check if the line "HASHPATH_CODE_HERE" exists
+    if content.contains("HASHPATH_CODE_HERE") {
+        // Determine the size of the path array
+        let path_size = signer_society_details.path.len();
+
+        // Define the HashPath struct code with the appropriate size
+        let hashpath_code = format!(
+            "// Struct representing a hash path in a Merkle tree\n\
+             struct HashPath {{\n\
+             \tpath: [Field; {}],\n\
+             \tindex: Field\n\
+             }}",
+            path_size
+        );
+
+        // Replace "HASHPATH_CODE_HERE" with the actual code
+        content = content.replace("HASHPATH_CODE_HERE", &hashpath_code);
+
+        // Write the modified content back to main.nr
+        let mut file = fs::File::create(main_nr_dst)?;
+        file.write_all(content.as_bytes())?;
+    } else {
+        println!("No 'HASHPATH_CODE_HERE' placeholder found in main.nr");
+    }
+
+    Ok(())
 }

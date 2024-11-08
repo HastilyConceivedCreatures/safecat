@@ -25,6 +25,9 @@ pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> R
     // Find relevant certificate
     let (found_cert, found_signature) = find_cert_and_signature("certs/received", cert_format)?;
 
+    // copy Noir template code to temp format
+    prepare_noir_project(cert_format, proof_format)?;
+
     // Create a document with proof input
     let proof_input_document = proof_input::create_proof_input(
         (*cert_format).clone(),
@@ -37,16 +40,18 @@ pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> R
     let prover_toml = proof_input_document.to_toml_table();
     let toml_string =
         toml::to_string_pretty(&prover_toml).map_err(|_| "Failed to serialize TOML")?;
-    let prover_path = Path::new(consts::DATA_DIR).join("Prover.toml");
+    let prover_path = Path::new(consts::TEMP_DIR).join("Prover.toml");
 
     fs::write(&prover_path, toml_string).map_err(|_| "Unable to write Prover.toml")?;
-    println!("Successfully wrote {:?}", prover_path);
-
-    prepare_noir_project(cert_format, proof_format)?;
+    println!(
+        "{}Prover.toml created{}",
+        consts::GREEN_COLOR_ANSI,
+        consts::RESET_COLOR_ANSI
+    );
 
     if no_execute {
-        io_utils::copy_temp_to_output()?;
-        println!("The Noir program is located to {}/noir", consts::OUTPUT_DIR);
+        let noir_path = io_utils::create_noir_project_folder(cert_format, proof_format)?;
+        println!("The Noir program is located to {}", noir_path);
     } else {
         prove_with_nargo_bb()?;
     }
@@ -111,6 +116,11 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
     // Change the current working directory to temp
     let data_noir_dir = consts::TEMP_DIR;
 
+    println!(
+        "{}Running Nargo execute{}",
+        consts::SOFT_BLUE_COLOR_ANSI,
+        consts::RESET_COLOR_ANSI
+    );
     // Execute the first command
     let nargo_output = Command::new("nargo")
         .arg("execute")
@@ -124,6 +134,12 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
         eprintln!("nargo command failed with output: {:?}", nargo_output);
         std::process::exit(1);
     }
+
+    println!(
+        "{}Running bb (Barretenberg){}",
+        consts::YELLOW_COLOR_ANSI,
+        consts::RESET_COLOR_ANSI
+    );
 
     // Execute the second command
     let bb_output = Command::new("bb")
@@ -140,7 +156,11 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
 
     // Check if the bb command was successful
     if bb_output.status.success() && bb_output.stdout.is_empty() {
-        println!("Proof succeed! The proof is in file target/proof");
+        println!(
+            "{}Proof succeed! The proof is in file target/proof{}",
+            consts::BRIGHT_GREEN_COLOR_ANSI,
+            consts::RESET_COLOR_ANSI
+        );
     } else {
         eprintln!("bb command failed with output: {:?}", bb_output);
         std::process::exit(1);
@@ -154,20 +174,27 @@ fn prove_with_nargo_bb() -> Result<(), Error> {
 
     // Copy the proof file
     fs::copy(&proof_src, &proof_dest).map_err(|e| format!("Failed to copy proof file: {}", e))?;
-    println!("The proof was move to {:?}", proof_dest);
+    println!(
+        "{}The proof was moved to {:?}{}",
+        consts::GREEN_COLOR_ANSI,
+        proof_dest,
+        consts::RESET_COLOR_ANSI
+    );
 
     Ok(())
 }
 
 // Main function as requested
 fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()> {
+    // Create Path for the temporary directory
     let temp_folder = Path::new(consts::TEMP_DIR);
 
-    let noir_template_folder_path =
+    // Create a path for the noit template folder
+    let noir_template_folder_string =
         consts::DATA_DIR.to_string() + "/" + consts::NOIR_TEMPLATE_FOLDER;
-    let noir_template_folder = Path::new(&noir_template_folder_path);
+    let noir_template_folder = Path::new(&noir_template_folder_string);
 
-    // Step 1: Delete everything in 'temp' folder, recreate it
+    // Step 1: Delete and recreate the 'temp' folder
     io_utils::recreate_folder(temp_folder)?;
 
     // Step 2: Copy everything from 'noir_project_template' to 'temp'
@@ -188,24 +215,15 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
     // Copy the file, overwrite if needed
     fs::copy(main_nr_src, main_nr_dst)?;
 
-    // Step 4: Copy Prover.toml from DATA_DIR/Prover.toml to temp folder
-    let prover_toml_src_path = consts::DATA_DIR.to_string() + "/Prover.toml";
-    let prover_toml_src = Path::new(&prover_toml_src_path);
-    let prover_toml_dst = temp_folder.join("Prover.toml");
+    // TODO: remove comment once it works
+    // // Step 4: Copy Prover.toml from DATA_DIR/Prover.toml to temp folder
+    // let prover_toml_src_path = consts::DATA_DIR.to_string() + "/Prover.toml";
+    // let prover_toml_src = Path::new(&prover_toml_src_path);
+    // let prover_toml_dst = temp_folder.join("Prover.toml");
 
-    fs::copy(prover_toml_src, prover_toml_dst)?;
+    // fs::copy(prover_toml_src, prover_toml_dst)?;
 
     Ok(())
-}
-
-// These structs are used to give the Toml file a nice structure
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Member {
-    pub name: String,
-    x: String,
-    y: String,
-    pub index: u32,
-    pub path: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -117,25 +117,31 @@ pub fn recreate_folder(folder_path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn copy_temp_to_output() -> Result<(), io::Error> {
+/// Creates a Noir project folder based on certificate and proof format, and copies temporary files into it.
+pub fn create_noir_project_folder(
+    cert_format: &String,
+    proof_format: &String,
+) -> Result<String, io::Error> {
+    // Temp directory path
     let temp_path = Path::new(consts::TEMP_DIR);
-    let output_path = Path::new(consts::OUTPUT_DIR);
 
-    let noir_path_str = consts::OUTPUT_DIR.to_string() + "/noir";
+    // Construct the Noir output project path
+    let noir_path_str = format!(
+        "{}/noir_{}_{}",
+        consts::OUTPUT_DIR,
+        cert_format,
+        proof_format
+    );
     let noir_path = Path::new(&noir_path_str);
 
-    // Create the output and noir directory if it doesn't exist
-    if !output_path.exists() {
-        fs::create_dir_all(noir_path)?;
-    }
-    if !noir_path.exists() {
-        fs::create_dir_all(noir_path)?;
-    }
+    // Recreate (delete and create) the Noir project path
+    recreate_folder(noir_path)?;
 
     // Recursively copy the contents of the temp directory
     copy_dir_all(temp_path, noir_path)?;
 
-    Ok(())
+    // Return the noir path string
+    Ok(noir_path_str)
 }
 
 // Helper function to recursively copy a directory

@@ -1,9 +1,13 @@
-/* Verify certificates for a public key example:
- * verifies that a person, reprenseted as public key, is human
- * has two certificates of type 1 (meaning, certificate of human for an public key)
- * Nargo version = 0.28.0
+/* Safecat template for a certificates proof.
+ *
+ * Generates a proof to verify the existence of a certificate for a public key.
+ * 
+ * Nargo version = 0.37.0
  */
 use dep::std;
+
+// This will be replaced by "hash_path" structure by Safecat
+HASHPATH_CODE_HERE
 
 // Struct representing a person, with x and y coordinates for a public key
 struct Person {
@@ -25,12 +29,6 @@ struct Certificate {
     expiration: Field,
 }
 
-// Struct representing a hash path in a Merkle tree
-struct HashPath {
-    path: [Field; 2],
-    index: Field
-}
-
 impl Certificate {
     // Method to hash the certificate data using the Poseidon hash function
     fn hash(self) -> Field {
@@ -50,36 +48,36 @@ impl Certificate {
 // - signers_hash_path: One HashPath structs representing the hash path for the signer
 fn main(
     cert_type: Field,
-    BabyjubjubPubkey: pub Person,
+    babyjubjub_pubkey: pub Person,
     society_root: pub Field,
-    LastCheckedTimestamp: pub Field,
-    Expiration: Field,
+    last_checked_timestamp: pub Field,
+    expiration: Field,
     signer: Person,
     signature: Signature,
     hash_path: HashPath
 ) {
     // Verify that the current timestamp is before the certificate expiration date
-    assert(LastCheckedTimestamp.lt(Expiration));
+    assert(last_checked_timestamp.lt(expiration));
 
-    // Create a Certificate struct with type 1 (birth certificate)
+    // Create a Certificate struct
     let certificate = Certificate {
         cert_type: cert_type,
-        person: BabyjubjubPubkey,
-        expiration: Expiration
+        person: babyjubjub_pubkey,
+        expiration: expiration
     };
 
-    // Verify signatures
+    // Verify signature
     let verify_signature = dep::std::eddsa::eddsa_poseidon_verify(signer.x, signer.y, signature.s, signature.rx, signature.ry, certificate.hash());
 
-    // Calculate the Merkle root using the first signer hash path
+    // Calculate the signer leaf value
     let leaf_signer : Field = std::hash::pedersen_hash([signer.x, signer.y]);
 
-    // Calculate the Merkle root using the second signer hash path
+    // Calculate the Merkle root using the signer hash path
     let merkel_root = std::merkle::compute_merkle_root(leaf_signer, hash_path.index, hash_path.path);
 
-    // Verify that the calculated Merkle roots match the trust kernel root
+    // Verify that the calculated Merkle roots match the society_root
     assert(merkel_root == society_root);
 
-    // Verify that both signatures are correct
+    // Verify that the signatures is correct
     assert(verify_signature);
 }

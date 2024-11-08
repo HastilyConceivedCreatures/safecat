@@ -13,6 +13,8 @@ pub const DEAFULT_SOCIETY: &str = "woolball";
 
 // ANSI escape code
 pub const GREEN_COLOR_ANSI: &str = "\x1b[32m";
+pub const BRIGHT_GREEN_COLOR_ANSI: &str = "\x1b[92m";
 pub const RED_COLOR_ANSI: &str = "\x1b[31m";
 pub const SOFT_BLUE_COLOR_ANSI: &str = "\x1b[94m";
+pub const YELLOW_COLOR_ANSI: &str = "\x1b[33m";
 pub const RESET_COLOR_ANSI: &str = "\x1b[0m";
