@@ -1,14 +1,9 @@
 [[to]]
-fname = "EVMAddress"
+fname = "EVM_address"
 fdescription = "EVM address (e.g., 0x1aD2B053b8c6b1592cB645DEfadf105F34d8C6e1)"
 ftype = "EVMAddress"
 
 [[body]]
-fname = "Birthdate"
-fdescription = "Date of birth"
-ftype = "Timestamp"
-
-[[body]]
-fname = "Expiration"
+fname = "expiration"
 fdescription = "Expiration Date"
 ftype = "Timestamp"

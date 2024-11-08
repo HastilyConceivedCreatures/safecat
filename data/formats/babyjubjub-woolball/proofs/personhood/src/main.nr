@@ -25,6 +25,7 @@ struct Signature {
 // Struct representing a certificate
 struct Certificate {
     cert_type: Field,
+    woolball_name: Field,
     person: Person,
     expiration: Field,
 }
@@ -32,8 +33,8 @@ struct Certificate {
 impl Certificate {
     // Method to hash the certificate data using the Poseidon hash function
     fn hash(self) -> Field {
-        let certificate_as_array : [Field; 4] = [self.cert_type, self.person.x, self.person.y, self.expiration];
-        std::hash::poseidon::bn254::hash_4(certificate_as_array)
+        let certificate_as_array : [Field; 5] = [self.cert_type, self.woolball_name, self.person.x, self.person.y, self.expiration];
+        std::hash::poseidon::bn254::hash_5(certificate_as_array)
     }
 }
 
@@ -51,6 +52,7 @@ impl Certificate {
 fn main(
     cert_type: Field,
     babyjubjub_pubkey: pub Person,
+    woolball_name: pub Field,
     society_root: pub Field,
     last_checked_timestamp: pub Field,
     expiration: Field,
@@ -65,6 +67,7 @@ fn main(
     let certificate = Certificate {
         cert_type: cert_type,
         person: babyjubjub_pubkey,
+        woolball_name: woolball_name,
         expiration: expiration
     };
 

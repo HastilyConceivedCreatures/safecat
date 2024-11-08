@@ -27,14 +27,13 @@ struct Certificate {
     cert_type: Field,
     person: Person,
     expiration: Field,
-    birthdate: Field
 }
 
 impl Certificate {
     // Method to hash the certificate data using the Poseidon hash function
     fn hash(self) -> Field {
-        let certificate_as_array : [Field; 5] = [self.cert_type, self.person.x, self.person.y, self.birthdate, self.expiration];
-        std::hash::poseidon::bn254::hash_5(certificate_as_array)
+        let certificate_as_array : [Field; 4] = [self.cert_type, self.person.x, self.person.y, self.expiration];
+        std::hash::poseidon::bn254::hash_4(certificate_as_array)
     }
 }
 
@@ -45,23 +44,19 @@ struct ToWhom {
     s: Field
 }
 
-/// Validates that a person holds a type 1 certificate signed by an authorized signer.
+/// Verifies the existence of a certificate for a given public key.
 /// 
 /// # Arguments
-/// 
-/// * `cert_type` - The type of certificate being checked (Field).
-/// * `person` - The person whose certificate is being verified (address).
-/// * `society` - The root of the society Merkle tree. The leaves are public keys 
-///               of trusted entities authorized to issue certificates.
-/// * `last_checked_timestamp` - The timestamp when the certificate validity is checked.
-/// * `expiration` - The expiration date of the certificate (Field).
-/// * `birthdate` - The person's birthdate (Field).
-/// * `signers` - An array containing one person representing the signers.
-/// * `signatures` - An array containing one signature corresponding to the signer.
-/// * `signers_hash_path` - An array containing one `HashPath` struct, representing 
-///                         the hash path for the signer.
-/// * `to_whom` - The entity or person to whom the certificate is issued (Field).
-/// * `to_whom_signature` - The signature from the recipient entity or person.
+/// - `cert_type`: Type of certificate being verified.
+/// - `babyjubjub_pubkey`: Public key of the person whose certificate is being verified.
+/// - `society_root`: Root of the society Merkle tree.
+/// - `last_checked_timestamp`: Timestamp to ensure the certificate's validity.
+/// - `expiration`: Expiration date of the certificate.
+/// - `signer`: Signer associated with the certificate.
+/// - `signature`: Signature of the signer.
+/// - `hash_path`: Merkle hash path for the signer.
+/// * `to_whom`: Hash of the entity for which the certificate is issued.
+/// * `to_whom_signature: The signed to_whom hash by the babyjubjub_pubkey
 fn main(
     cert_type: Field,
     babyjubjub_pubkey: pub Person,
