@@ -2,7 +2,6 @@ use crate::crypto_structures::{certificate::Cert, proof_input, signature::Signat
 use crate::{consts, io_utils, Error};
 
 use chrono::Local;
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -216,17 +215,4 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
     fs::copy(main_nr_src, main_nr_dst)?;
 
     Ok(())
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureToml {
-    s: String,
-    rx: String,
-    ry: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Signer {
-    x: String,
-    y: String,
 }

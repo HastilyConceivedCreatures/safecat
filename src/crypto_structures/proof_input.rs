@@ -17,44 +17,14 @@ use std::{
     io::Write,
 };
 
-/// Represents additional parameters needed to create a proof, extending `FieldType`.
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ProofParameters {
-    Field(document::FieldType), // Reuses all the variants of the FieldType enum
-    SignedMessage(String),      // Additional variant specific to ProofParameters
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Person {
-    x: String,
-    y: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureToml {
-    s: String,
-    rx: String,
-    ry: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ProofInput {
-    #[serde(default)]
-    public: Vec<FormatField>,
-
-    #[serde(default)]
-    private: Vec<FormatField>,
-}
-
+// Represents a path in a Merkle tree
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HashPath {
     pub index: u32,
     pub path: Vec<String>,
 }
 
-// Reads proof.toml from the proof_format of the cert_format.
-// Fill up accordingly using existing data and inquire crate
-// returns a vecotr of DocumentField to be added to the rest of the proof data
+// Creates an input for the proof program, represented as a Document object
 pub fn create_proof_input(
     cert_format: String,
     proof_format: String,
@@ -148,14 +118,7 @@ pub fn create_proof_input(
     })
 }
 
-// fill up the format from the certificate data
-/// Represents a certificate with recipient fields, and body fields
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DocumentFieldsDocument {
-    /// A vector of proof inputs fields
-    pub fields: Vec<DocumentField>,
-}
-
+/// Reads a format from a TOML file into a`Format` object.
 pub fn read_document_format_from_toml(file_name: &str) -> Result<document::Format, Error> {
     let mut file = OpenOptions::new().read(true).open(file_name)?;
 
@@ -166,7 +129,8 @@ pub fn read_document_format_from_toml(file_name: &str) -> Result<document::Forma
     Ok(document_format)
 }
 
-// Return a tuple of the Member in the society and of a string of the society hash
+/// Looks for a member Merkle tree hash path inside of society file.
+/// Returns a tuple containing a society member's details and the society's root hash.
 fn find_hash_path(signer: PubKey, society: &str) -> Result<(MemberSociety, String), Error> {
     // Construct societies file path
     let societies_file_path =
@@ -210,56 +174,58 @@ fn find_hash_path(signer: PubKey, society: &str) -> Result<(MemberSociety, Strin
     Ok((member.clone(), society_root))
 }
 
+// Read and process the proof input.
+// Returns a tuple of a society in which the proof is made,
+// and a vector of DocumentField.
 fn read_proof_input(
     cert_format: String,
     proof_format: String,
 ) -> Result<(String, Vec<DocumentField>), Error> {
-    // Vector to hold processed proof input fields
+    // Vector to store processed proof input fields
     let mut proof_input_from_format: Vec<DocumentField> = Vec::new();
 
-    // Default value for society in case it's not found in the input fields
+    // Default society name if not specified in the input fields
     let mut society: String = consts::DEAFULT_SOCIETY.to_string();
 
-    // First, calculate the certificate formats path
+    // Construct path to the certificate formats folder
     let formats_folder_path = format!("{}/{}", consts::DATA_DIR, consts::CERTIFICATE_FORMATS);
 
-    // Construct the file path based on the cert_format and proof_format parameters
-    let file_path = format!(
+    // Construct the path to the proof input format file based on cert_format and proof_format
+    let proof_input_path_string = format!(
         "{}/{}/proofs/{}/proof.toml",
         formats_folder_path, cert_format, proof_format
     );
 
-    // Read the certificate format from the TOML file
-    let input_format =
-        read_document_format_from_toml(&file_path).expect("Couldn't read proof.toml file");
+    // Construct the proof input format from the proof TOML file
+    let input_format = read_document_format_from_toml(&proof_input_path_string)
+        .expect("Couldn't read proof.toml file");
 
-    // Process each field from the input format
+    // Process each field in the proof input format
     for field in input_format.fields {
         let input_field = document::process_document_field(field);
 
-        // Check if the current field's type is `Text` and the name is "society"
+        // If the field name is "society" and of type `Text`, update the society value
         if input_field.format_field.fname == "society" {
             if let FieldType::Text(society_value) = &input_field.field {
-                // Check if the society field is not empty
+                // Update society only if the user entered a non-empty one
                 if !society_value.is_empty() {
-                    // Update the society variable with the value from the field
                     society = society_value.clone();
                 }
             }
         } else {
-            // Add the processed field to the vector
+            // Add other processed fields to the proof input
             proof_input_from_format.push(input_field);
         }
     }
 
-    // Return the society value along with the processed fields
+    // Return the society name along with the processed proof input fields
     Ok((society, proof_input_from_format))
 }
 
 // Insert the HashPath variable into the Noir code.
-// This is needed since Noir doesn't support dynamic arrays, but we only know the
-// size of the array HashPath object needs after we find the details of whoever signed
-// the certificate in the society file the user specified.
+// This is necessary because Noir lacks support for dynamic arrays,
+// and the size of the HashPath array can only be determined after locating
+// the signer's details in the specified society file.
 fn insert_hashpath_code(signer_society_details: &MemberSociety) -> Result<(), io::Error> {
     let temp_folder = Path::new(consts::TEMP_DIR);
     let main_nr_dst = temp_folder.join("src/main.nr");
