@@ -60,8 +60,8 @@ pub enum Commands {
 
     /// Creates a certification from an assertion.
     ///
-    /// The certificate definition should be a `.toml` file located in the
-    /// `data/certificate-formats/` directory.
+    /// The certificate definition should be a `format.toml` file located in the
+    /// `data/formats/<format>/` directory.
     Attest {
         /// Specifies the type of certificate. Default is "babyjubjub".
         #[arg(long, default_value = "babyjubjub")]
@@ -72,15 +72,19 @@ pub enum Commands {
         _args: Vec<String>,
     },
 
-    /// Proves you're a unique human (or alien) to someone.
+    /// Creates a zk-proof using nargo and bb, for given ceritficate and proof formats.
     Prove {
-        /// What to prove ("human" or "alien"). Default is "human".
-        #[arg(long, value_parser = ["human", "alien"], default_value = "human")]
-        what: String,
+        /// Specifies the type of certificate.
+        #[arg(long, default_value = "babyjubjub")]
+        cert_format: String,
 
-        /// To whom to prove your uniqueness.
-        #[arg(long, default_value = "")]
-        to_whom: String,
+        /// What to prove.
+        #[arg(long, default_value = "personhood")]
+        proof_format: String,
+
+        /// To execute or not?
+        #[clap(long, short, action)]
+        no_execute: bool,
     },
 }
 

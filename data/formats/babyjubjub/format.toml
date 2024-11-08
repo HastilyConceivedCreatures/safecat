@@ -1,0 +1,9 @@
+[[to]]
+fname = "babyjubjub_pubkey"
+fdescription = "BabyjubjubPubkey (128 hex): "
+ftype = "BabyjubjubPubkey"
+
+[[body]]
+fname = "expiration"
+fdescription = "Expiration Date"
+ftype = "Timestamp"

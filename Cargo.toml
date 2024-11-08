@@ -2,7 +2,10 @@
 name = "safecat"
 version = "0.1.0"
 edition = "2021"
-maintainer = "Neiman"
+
+[[bin]]
+name = "safecat"
+path = "src/main.rs"
 
 [dependencies]
 ark-bn254 = "0.4.0"
@@ -29,8 +32,17 @@ zip = "2.2.0"
 
 [package.metadata.deb]
 name = "Safecat"
-maintainer = "Neiman"
-copyright = "LGPL-3.0-or-later"
+maintainer = "Neiman <neiman@hackerspace.pl>"
+copyright = "2024, Neiman <neiman@hackerspace.pl>"
+extended-description =  """\
+A simple CLI tool to for cryptographic actions using Baby \
+Jubjub Elliptic Curve and Poseidon hash function."""
+license-file = "LICENSE"
 assets = [
-    ["noir-examples/verify_human_certificates_for_address/*", "usr/share/safecat/noir-examples", "755"]
+    ["target/release/safecat", "usr/bin/", "755"], 
+    ["data/*", "var/lib/safecat/", "755"],        # For files directly in the data folder
+    ["data/*/*", "var/lib/safecat/", "755"],      # For files in first-level subdirectories
+    ["data/*/*/*", "var/lib/safecat/", "755"],    # For files in second-level subdirectories
+    ["data/*/*/*/*/*", "var/lib/safecat/", "755"],# For files in fourth-level subdirectories
+    ["data/*/*/*/*/*/*", "var/lib/safecat/", "755"]# For files in fifth-level subdirectories
 ]

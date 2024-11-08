@@ -1,35 +1,79 @@
-use crate::crypto_structures::{babyjubjub, certificate::Cert, signature::SignatureAndSigner};
+use crate::crypto_structures::{certificate::Cert, proof_input, signature::SignatureAndSigner};
+use crate::{consts, io_utils, Error};
 
-use crate::commands::sign;
-use crate::consts;
-
-use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use chrono::Local;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml;
-use zip::{write::SimpleFileOptions, ZipWriter};
 
-pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
+pub fn prove(cert_format: &String, proof_format: &String, no_execute: bool) -> Result<(), Error> {
     // Stating what we prove
     println!(
-        "{}proving: {}. This is a WIP feature, don't use it unless you know the inner works of Safecat! {}",
-        consts::RED_COLOR_ANSI,
-        what,
+        "proving claim {} {} {} for format {} {}. {}",
+        consts::SOFT_BLUE_COLOR_ANSI,
+        proof_format,
+        consts::RESET_COLOR_ANSI,
+        consts::SOFT_BLUE_COLOR_ANSI,
+        cert_format,
+        consts::RESET_COLOR_ANSI,
+    );
+
+    // Find relevant certificate
+    let (found_cert, found_signature) = find_cert_and_signature("certs/received", cert_format)?;
+
+    // copy Noir template code to temp format
+    prepare_noir_project(cert_format, proof_format)?;
+
+    // Create a document with proof input
+    let proof_input_document = proof_input::create_proof_input(
+        (*cert_format).clone(),
+        proof_format.clone(),
+        found_cert,
+        found_signature,
+    )?;
+
+    // Serialize to TOML and write to output file
+    let prover_toml = proof_input_document.to_toml_table();
+    let toml_string =
+        toml::to_string_pretty(&prover_toml).map_err(|_| "Failed to serialize TOML")?;
+    let prover_path = Path::new(consts::TEMP_DIR).join("Prover.toml");
+
+    fs::write(&prover_path, toml_string).map_err(|_| "Unable to write Prover.toml")?;
+    println!(
+        "{}Prover.toml created{}",
+        consts::GREEN_COLOR_ANSI,
         consts::RESET_COLOR_ANSI
     );
 
-    // Step 1: Get list of files from certs/received
-    let certs_path = Path::new("certs/received");
-    let files = fs::read_dir(certs_path)?;
+    if no_execute {
+        let noir_path = io_utils::create_noir_project_folder(cert_format, proof_format)?;
+        println!("The Noir program is located to {}", noir_path);
+    } else {
+        prove_with_nargo_bb()?;
+    }
 
+    io_utils::erase_temp_contents()?;
+
+    Ok(())
+}
+
+fn find_cert_and_signature(
+    files_path: &str,
+    cert_format: &str,
+) -> Result<(Cert, SignatureAndSigner), Error> {
+    // Get the list of files from certs/received folder
+    let certs_path = Path::new(files_path);
+    let files = fs::read_dir(certs_path)
+        .map_err(|_| format!("folder '{}' doesn't exist", certs_path.display()))?;
+
+    // These variables will hold the certificates and signatures we find
     let mut found_cert_option: Option<Cert> = None;
     let mut found_signature_option: Option<SignatureAndSigner> = None;
 
-    // Step 2: Read type of each file until it finds a file where type is "birth"
+    // Step 2: Read type of each file until it finds a file where type equals "cert_format"
     for file in files {
         let entry = file?;
         let path = entry.path();
@@ -38,7 +82,7 @@ pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
             let mut lines = io::BufReader::new(file).lines();
             if let Some(Ok(first_line)) = lines.next() {
                 let cert: Cert = serde_json::from_str(&first_line).unwrap();
-                if cert.cert_type == "babyjubjub" {
+                if cert.cert_type == *cert_format {
                     // Store the cert to be used outside the loop
                     found_cert_option = Some(cert);
 
@@ -57,205 +101,44 @@ pub fn prove(what: &String, to_whom: &String) -> io::Result<()> {
         }
     }
 
-    let found_cert = found_cert_option.expect("Did not find any fitting certificates.");
-    let found_signature = found_signature_option.unwrap();
-
-    // Extract details from Cert
-    let signer_id = found_signature.signer.to_hex_str();
-
-    // Read the JSON data
-    let trust_kernel_json =
-        fs::read_to_string("data/trust_kernel.json").expect("Unable to read trust_kernel.json");
-    let trust_kernel: TrustKernel =
-        serde_json::from_str(&trust_kernel_json).expect("JSON was not well-formatted");
-
-    // Find the specified member
-    let member_opt = trust_kernel
-        .members
-        .iter()
-        .find(|m| m.name.to_lowercase() == signer_id.to_lowercase());
-
-    if let Some(member) = member_opt {
-        // Fill in the member data
-        let mut prover = Prover {
-            cert_type: found_cert.cert_type,
-            trust_kernel_root: trust_kernel.root,
-            last_checked_timestamp: Utc::now().timestamp().to_string(),
-            birthdate: found_cert.body[0]
-                .field
-                .as_timestamp()
-                .unwrap()
-                .timestamp()
-                .to_string(),
-            expiration: found_cert.body[1]
-                .field
-                .as_timestamp()
-                .unwrap()
-                .timestamp()
-                .to_string(),
-            person: *found_cert.to[0].field.as_babyjubjub_pubkey().unwrap(),
-            signatures: vec![found_signature],
-            signers_hash_path: vec![SignersHashPath {
-                index: member.index,
-                path: member.path.clone(),
-            }],
-            to_whom: to_whom.to_string(),
-        };
-
-        // Serialize to TOML and write to output file
-        let prover_toml = prover.to_toml();
-        let toml_string = toml::to_string_pretty(&prover_toml).expect("Failed to serialize TOML");
-        fs::write("data/NoirTargetedProofs/Prover.toml", toml_string)
-            .expect("Unable to write prover.toml");
-
-        println!("Successfully wrote data/NoirTargetedProofs/Prover.toml");
-
-        prove_with_nargo_bb();
+    // Return the found Cert and Signature, or an error if not found
+    if let (Some(cert), Some(signature_and_signer)) = (found_cert_option, found_signature_option) {
+        Ok((cert, signature_and_signer))
     } else {
-        eprintln!("Member '{}' not found", signer_id);
-    }
-
-    Ok(())
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct TrustKernel {
-    root: String,
-    members: Vec<Member>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Member {
-    name: String,
-    x: String,
-    y: String,
-    index: u32,
-    path: Vec<String>,
-}
-
-#[derive(Debug)]
-struct Prover {
-    cert_type: String,
-    trust_kernel_root: String,
-    last_checked_timestamp: String,
-    expiration: String,
-    birthdate: String,
-    person: babyjubjub::PubKey,
-    signatures: Vec<SignatureAndSigner>,
-    signers_hash_path: Vec<SignersHashPath>,
-    to_whom: String,
-}
-
-impl Prover {
-    pub fn to_toml(&mut self) -> ProverToml {
-        let cert_type = babyjubjub::message_to_fq_vec(&self.cert_type).unwrap();
-        let cert_type_str_dec = babyjubjub::fq_to_dec_str(&cert_type);
-
-        let person = Person {
-            x: babyjubjub::fq_to_dec_str(&self.person.x),
-            y: babyjubjub::fq_to_dec_str(&self.person.y),
-        };
-
-        let mut signatures: Vec<SignatureToml> = vec![];
-        let mut signers: Vec<Person> = vec![];
-
-        for signature_and_signer in self.signatures.iter_mut() {
-            let signature_toml = SignatureToml {
-                s: babyjubjub::fr_to_dec_string(&signature_and_signer.signature.s),
-                rx: babyjubjub::fq_to_dec_str(&signature_and_signer.signature.rx),
-                ry: babyjubjub::fq_to_dec_str(&signature_and_signer.signature.ry),
-            };
-
-            let signer_toml = Person {
-                x: babyjubjub::fq_to_dec_str(&signature_and_signer.signer.x),
-                y: babyjubjub::fq_to_dec_str(&signature_and_signer.signer.y),
-            };
-
-            signatures.push(signature_toml);
-            signers.push(signer_toml);
-        }
-
-        let (to_whom_signature, to_whom_fq) = sign::sign_message(self.to_whom.clone()).unwrap();
-        let to_whom_str_dec = babyjubjub::fq_to_dec_str(&to_whom_fq);
-        let to_whom_signature_toml = SignatureToml {
-            s: babyjubjub::fr_to_dec_string(&to_whom_signature.s),
-            rx: babyjubjub::fq_to_dec_str(&to_whom_signature.rx),
-            ry: babyjubjub::fq_to_dec_str(&to_whom_signature.ry),
-        };
-
-        ProverToml {
-            cert_type: cert_type_str_dec,
-            trust_kernel_root: self.trust_kernel_root.clone(),
-            last_checked_timestamp: self.last_checked_timestamp.clone(),
-            expiration: self.expiration.clone(),
-            birthdate: self.birthdate.clone(),
-            person: person,
-            signatures: signatures,
-            signers: signers,
-            signers_hash_path: self.signers_hash_path.clone(),
-            to_whom: to_whom_str_dec,
-            to_whom_signature: to_whom_signature_toml,
-        }
+        Err(Box::from(
+            "Did not find any fitting certificates or signatures",
+        ))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct ProverToml {
-    cert_type: String,
-    trust_kernel_root: String,
-    last_checked_timestamp: String,
-    expiration: String,
-    birthdate: String,
-    person: Person,
-    signatures: Vec<SignatureToml>,
-    signers: Vec<Person>,
-    signers_hash_path: Vec<SignersHashPath>,
-    to_whom: String,
-    to_whom_signature: SignatureToml,
-}
+fn prove_with_nargo_bb() -> Result<(), Error> {
+    // Change the current working directory to temp
+    let data_noir_dir = consts::TEMP_DIR;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Person {
-    x: String,
-    y: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureToml {
-    s: String,
-    rx: String,
-    ry: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Signer {
-    x: String,
-    y: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct SignersHashPath {
-    index: u32,
-    path: Vec<String>,
-}
-
-fn prove_with_nargo_bb() {
-    // Change the current working directory to 'data/NoirTargetedProofs'
-    let data_noir_dir = "data/NoirTargetedProofs";
-
+    println!(
+        "{}Running Nargo execute{}",
+        consts::SOFT_BLUE_COLOR_ANSI,
+        consts::RESET_COLOR_ANSI
+    );
     // Execute the first command
     let nargo_output = Command::new("nargo")
         .arg("execute")
         .arg("witness-human")
         .current_dir(data_noir_dir)
         .output()
-        .expect("Failed to execute nargo command");
+        .map_err(|_| "Failed to execute nargo command")?;
 
     // Check if the nargo command was successful
     if !nargo_output.status.success() {
         eprintln!("nargo command failed with output: {:?}", nargo_output);
         std::process::exit(1);
     }
+
+    println!(
+        "{}Running bb (Barretenberg){}",
+        consts::YELLOW_COLOR_ANSI,
+        consts::RESET_COLOR_ANSI
+    );
 
     // Execute the second command
     let bb_output = Command::new("bb")
@@ -268,11 +151,15 @@ fn prove_with_nargo_bb() {
         .arg("./target/proof")
         .current_dir(data_noir_dir)
         .output()
-        .expect("Failed to execute bb command");
+        .map_err(|_| "Failed to execute bb command")?;
 
     // Check if the bb command was successful
     if bb_output.status.success() && bb_output.stdout.is_empty() {
-        println!("Proof succeed! The proof is in file target/proof");
+        println!(
+            "{}Proof succeed! The proof is in file target/proof{}",
+            consts::BRIGHT_GREEN_COLOR_ANSI,
+            consts::RESET_COLOR_ANSI
+        );
     } else {
         eprintln!("bb command failed with output: {:?}", bb_output);
         std::process::exit(1);
@@ -280,30 +167,52 @@ fn prove_with_nargo_bb() {
 
     // Path to the target directory
     let target_dir = Path::new(data_noir_dir).join("target");
+    let proof_src = target_dir.join("proof");
+    let datetime = Local::now().format("%Y%m%d_%H%M%S"); // Format as "YYYYMMDD_HHMMSS"
+    let proof_dest = Path::new(&consts::OUTPUT_DIR).join(format!("proof_{}", datetime));
 
-    // Create a zip file containing 'hello_world.json' and 'proof'
-    let zip_file_path = target_dir.join("output.zip");
-    let zip_file = File::create(&zip_file_path).expect("Failed to create zip file");
-    let mut zip_writer = ZipWriter::new(zip_file);
+    // Copy the proof file
+    fs::copy(&proof_src, &proof_dest).map_err(|e| format!("Failed to copy proof file: {}", e))?;
+    println!(
+        "{}The proof was moved to {:?}{}",
+        consts::GREEN_COLOR_ANSI,
+        proof_dest,
+        consts::RESET_COLOR_ANSI
+    );
 
-    // Specify the compression method (e.g., Stored or Deflated)
-    let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Stored)
-        .unix_permissions(0o755);
+    Ok(())
+}
 
-    // Files to include in the zip
-    let files_to_zip = vec!["verify_certificates.json", "proof"];
+// Main function as requested
+fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()> {
+    // Create Path for the temporary directory
+    let temp_folder = Path::new(consts::TEMP_DIR);
 
-    for file_name in &files_to_zip {
-        let file_path = target_dir.join(file_name);
-        let mut file = File::open(&file_path).expect("Failed to open file");
+    // Create a path for the noit template folder
+    let noir_template_folder_string =
+        consts::DATA_DIR.to_string() + "/" + consts::NOIR_TEMPLATE_FOLDER;
+    let noir_template_folder = Path::new(&noir_template_folder_string);
 
-        zip_writer
-            .start_file(file_name, options)
-            .expect("Failed to add file to zip");
+    // Step 1: Delete and recreate the 'temp' folder
+    io_utils::recreate_folder(temp_folder)?;
 
-        io::copy(&mut file, &mut zip_writer).expect("Failed to write file to zip");
+    // Step 2: Copy everything from 'noir_project_template' to 'temp'
+    io_utils::copy_dir_all(noir_template_folder, temp_folder)?;
+
+    // Step 3: Copy main.nr file from data/formats/<cert_format>/proofs/<proof_format>/main.nr
+    let main_nr_src = PathBuf::from(format!(
+        "data/formats/{}/proofs/{}/src/main.nr",
+        cert_format, proof_format
+    ));
+    let main_nr_dst = temp_folder.join("src/main.nr");
+
+    // Create src folder in temp if it doesn't exist
+    if let Some(parent) = main_nr_dst.parent() {
+        fs::create_dir_all(parent)?;
     }
 
-    zip_writer.finish().expect("Failed to finalize zip file");
+    // Copy the file, overwrite if needed
+    fs::copy(main_nr_src, main_nr_dst)?;
+
+    Ok(())
 }

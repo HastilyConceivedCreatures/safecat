@@ -25,15 +25,12 @@ pub fn sign_and_print_message(
             "Signature: R.Y: {}",
             babyjubjub::fq_to_dec_str(&signature.ry)
         );
-        println!(
-            "Signature: S: {}",
-            babyjubjub::fr_to_dec_string(&signature.s)
-        );
+        println!("Signature: S: {}", signature.s.to_string());
     } else if output_format == "hex" {
         // change signature variables to hex
-        let signature_x_hex = babyjubjub::fq_to_hex_str(&signature.rx);
-        let signature_y_hex = babyjubjub::fq_to_hex_str(&signature.ry);
-        let signature_s_hex = babyjubjub::fr_to_hex_string(&signature.s);
+        let signature_x_hex = babyjubjub::fq_to_str_hex(&signature.rx);
+        let signature_y_hex = babyjubjub::fq_to_str_hex(&signature.ry);
+        let signature_s_hex = babyjubjub::fr_to_str_hex(&signature.s);
 
         println!(
             "Signature: {}{}{}",
@@ -66,15 +63,12 @@ pub fn sign_and_print_babyjubjub_fq(
             "Signature: R.Y: {}",
             babyjubjub::fq_to_dec_str(&signature.ry)
         );
-        println!(
-            "Signature: S: {}",
-            babyjubjub::fr_to_dec_string(&signature.s)
-        );
+        println!("Signature: S: {}", signature.s.to_string());
     } else if output_format == "hex" {
         // change signature variables to hex
-        let signature_x_hex = babyjubjub::fq_to_hex_str(&signature.rx);
-        let signature_y_hex = babyjubjub::fq_to_hex_str(&signature.ry);
-        let signature_s_hex = babyjubjub::fr_to_hex_string(&signature.s);
+        let signature_x_hex = babyjubjub::fq_to_str_hex(&signature.rx);
+        let signature_y_hex = babyjubjub::fq_to_str_hex(&signature.ry);
+        let signature_s_hex = babyjubjub::fr_to_str_hex(&signature.s);
 
         println!(
             "Signature: {}{}{}",
@@ -101,11 +95,11 @@ pub fn sign_message(message_to_sign_string: String) -> Result<(signature::Signat
     let hash_fq = poseidon_message(&message_to_sign_string);
 
     // Check if private key file exists
-    if !io_utils::file_exists(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)? {
+    if !io_utils::file_exists(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME)? {
         return Err("No key has been generated yet.".into());
     }
 
-    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+    let privkey_path_filename = consts::OUTPUT_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
 
     let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
@@ -120,11 +114,11 @@ fn sign_babyjubjub_fq(fq_as_str: String) -> Result<(signature::Signature, Fq), E
     let hash_fq = Fq::from_str(&*fq_as_str).unwrap();
 
     // Check if private key file exists
-    if !io_utils::file_exists(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)? {
+    if !io_utils::file_exists(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME)? {
         return Err("No key has been generated yet.".into());
     }
 
-    let privkey_path_filename = consts::DATA_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
+    let privkey_path_filename = consts::OUTPUT_DIR.to_string() + "/" + consts::PRIVATE_KEY_FILENAME;
 
     let private_key = babyjubjub::PrivKey::read_from_file(&privkey_path_filename)?;
 
@@ -170,7 +164,7 @@ pub fn verify_signature(
 }
 
 // Packs a message into an array and calculates its Poseidon hash
-fn poseidon_message(message_to_verify_string: &str) -> Fq {
+pub fn poseidon_message(message_to_verify_string: &str) -> Fq {
     let bytes = message_to_verify_string.as_bytes();
 
     // Pack the message bytes into right-aligned 31-byte chunks

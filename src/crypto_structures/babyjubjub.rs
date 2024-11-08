@@ -1,13 +1,13 @@
 use crate::{cast, consts, crypto_structures::signature, io_utils, serialization, Error};
 pub use ark_bn254::Fr as Fq; // Fr (scalar field) of BN254 is the Fq (base field) of Babyjubjub
 use ark_std::str::FromStr; // import to use from_str in structs
-use babyjubjub_ark::{new_key, Fr, Point, PrivateKey};
+use babyjubjub_ark::{new_key, Fr, PrivateKey};
 use chrono::{DateTime, Utc}; // for date_to_fq
 use num::{BigUint, Num};
 use poseidon_ark::Poseidon;
 pub use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{Read, Write};
 use std::path::Path;
 
@@ -44,18 +44,9 @@ impl PubKey {
         vec![self.x, self.y]
     }
 
-    pub fn from_point(point: Point) -> PubKey {
-        let pubkey = PubKey {
-            x: point.x,
-            y: point.y,
-        };
-
-        pubkey
-    }
-
     pub fn to_hex_str(&self) -> String {
-        let hex_string_x: String = fq_to_hex_str(&self.x);
-        let hex_string_y: String = fq_to_hex_str(&self.y);
+        let hex_string_x: String = fq_to_str_hex(&self.x);
+        let hex_string_y: String = fq_to_str_hex(&self.y);
 
         format!("{}{}", hex_string_x, hex_string_y)
     }
@@ -87,6 +78,11 @@ impl PrivKey {
 
         // Append a newline character to the JSON data
         json_data.push('\n');
+
+        // Ensure the directory exists
+        if let Some(parent_dir) = Path::new(file_path).parent() {
+            create_dir_all(parent_dir)?;
+        }
 
         // Create or open the file
         let mut file = File::create(Path::new(file_path))?;
@@ -164,33 +160,19 @@ impl PrivKey {
 }
 
 // Casting Fr of Babyjubjub to hex strings
-pub fn fr_to_hex_string(babyjubjubr_element: &Fr) -> String {
+pub fn fr_to_str_hex(fr: &Fr) -> String {
     // convert to a decimal string
-    let babyjubjubr_element_string = babyjubjubr_element.to_string();
+    let fr_str_dec = fr.to_string();
 
     // Parse the decimal string into a hex
-    let babyjubjubr_element_decimal =
-        BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
-    let babyjubjubr_element_hex_string = format!("{:0>64x}", babyjubjubr_element_decimal);
+    let fr_biguint = BigUint::parse_bytes(fr_str_dec.as_bytes(), 10).unwrap();
+    let fr_str_hex = format!("{:0>64x}", fr_biguint);
 
     // return the hex string
-    babyjubjubr_element_hex_string
+    fr_str_hex
 }
 
-// Casting Fr of Babyjubjub to dec strings
-pub fn fr_to_dec_string(babyjubjubr_element: &Fr) -> String {
-    // convert to a decimal string
-    let babyjubjubr_element_string = babyjubjubr_element.to_string();
-
-    // Parse the decimal string into a hex
-    let babyjubjubr_element_decimal =
-        BigUint::parse_bytes(babyjubjubr_element_string.as_bytes(), 10).unwrap();
-
-    // return the hex string
-    babyjubjubr_element_decimal.to_string()
-}
-
-/* Functions casting to Fr */
+/* Functions casting to Fq */
 
 /* Existing functions:
 *  Fq::from(x), where x is u128/u64/u32/u8/bool or i128/i64/i32/i8,
@@ -277,7 +259,7 @@ pub fn message_to_fq_vec(message: &str) -> Result<Fq, Error> {
 }
 
 // Casting Fr of Babyjubjub to hex strings
-pub fn fq_to_hex_str(fq: &Fq) -> String {
+pub fn fq_to_str_hex(fq: &Fq) -> String {
     // convert to a decimal string
     let fq_string = fq.to_string();
 

@@ -1,0 +1,15 @@
+[[fields]]
+fname = "society"
+fdescription = "society name: "
+ftype = "Text"
+
+[[fields]]
+fname = "last_checked_timestamp"
+fdescription = "The last timestamp for which the proof was made: "
+ftype = "Timestamp"
+
+[[fields]]
+fname = "to_whom"
+fdescription = "The entity or person to whom the certificate is issued: "
+ftype = "SignedText"
+

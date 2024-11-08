@@ -1,0 +1,14 @@
+[[to]]
+fname = "woolball_name"
+fdescription = "Who is the certificate for (Woolball#): "
+ftype = "WoolballName"
+
+[[to]]
+fname = "babyjubjub_pubkey"
+fdescription = "BabyjubjubPubkey (128 hex): "
+ftype = "BabyjubjubPubkey"
+
+[[body]]
+fname = "expiration"
+fdescription = "Expiration Date"
+ftype = "Timestamp"

@@ -13,16 +13,32 @@ use cli::{Cli, Commands};
 // Type alias for a boxed dynamic error trait object, accessible within the crate.
 pub(crate) type Error = Box<dyn std::error::Error>;
 
-fn main() -> Result<(), Error> {
+// The main function, where we catch and handle errors
+fn main() {
+    if let Err(e) = run() {
+        // Color the "Error occurred" message in red
+        eprintln!(
+            "{}Error occurred:{} {}{}",
+            consts::RED_COLOR_ANSI,   // Start red color
+            consts::RESET_COLOR_ANSI, // Reset color after "Error occurred"
+            consts::GREEN_COLOR_ANSI, // Color the error message in green
+            e                         // The error message itself
+        );
+        std::process::exit(1);
+    }
+}
+
+// The run function will contain the core logic of the program, propagating errors
+fn run() -> Result<(), Error> {
     let cli = Cli::parse();
 
     // Match the subcommand and execute the corresponding logic
     match &cli.command {
         Commands::Generate => {
-            commands::generate::generate(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME)?
+            commands::generate::generate(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME)?
         }
         Commands::ShowKeys { format } => {
-            commands::show_keys::show_keys(consts::DATA_DIR, consts::PRIVATE_KEY_FILENAME, format)?
+            commands::show_keys::show_keys(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME, format)?
         }
         Commands::Sign {
             format,
@@ -51,8 +67,12 @@ fn main() -> Result<(), Error> {
         Commands::Attest { format, _args } => {
             commands::attest::attest(format.to_string())?;
         }
-        Commands::Prove { what, to_whom } => {
-            commands::prove::prove(what, to_whom)?;
+        Commands::Prove {
+            cert_format,
+            proof_format,
+            no_execute,
+        } => {
+            commands::prove::prove(cert_format, proof_format, *no_execute)?;
         }
     }
 
