@@ -215,14 +215,6 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
     // Copy the file, overwrite if needed
     fs::copy(main_nr_src, main_nr_dst)?;
 
-    // TODO: remove comment once it works
-    // // Step 4: Copy Prover.toml from DATA_DIR/Prover.toml to temp folder
-    // let prover_toml_src_path = consts::DATA_DIR.to_string() + "/Prover.toml";
-    // let prover_toml_src = Path::new(&prover_toml_src_path);
-    // let prover_toml_dst = temp_folder.join("Prover.toml");
-
-    // fs::copy(prover_toml_src, prover_toml_dst)?;
-
     Ok(())
 }
 
