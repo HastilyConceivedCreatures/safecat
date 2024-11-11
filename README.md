@@ -60,7 +60,7 @@ To use `safecat prove` you also need [Noir](https://noir-lang.org/docs/dev/getti
 
     An explanation of certificates .toml format files is given below.
 
-6. `safecat prove <cert_format> <proof_format>`. Creates a zero-knowledge proof using nargo and Barretenberg (by Ztec), based on specified certificate and proof formats. By default, the command assumes the `babyjubjub` certificate format and `personhood` proof format, which are the most common use cases.
+6. `safecat prove <cert_format> <proof_format>`. Creates a zero-knowledge proof using Nargo and Barretenberg (by Ztec), based on specified certificate and proof formats. By default, the command assumes the `babyjubjub` certificate format and `personhood` proof format, which are the most common use cases.
 
     Safecat searches for the `.toml` certificate and proof format specifications in the `data/formats` folder. For example, specifying the certificate format as `babyjubjub` and the proof format as `personhood` would look for `data/formats/babyjubjub/format.toml` and `data/formats/babyjubjub/proofs/personhood/proof.toml`, respectively.
 
@@ -78,26 +78,27 @@ To use `safecat prove` you also need [Noir](https://noir-lang.org/docs/dev/getti
 
 
 ## Directories structure
-Safecat has at thsi stage quite a strict data and output directory structure. If you're adding new formats, make sure to place it in the right place or all hell will break loose (i.e., you'll get a run-time error).
+Safecat has at this stage quite a strict data and output directory structure. If you're adding new formats, make sure to place it in the right place or all hell will break loose (i.e., a run-time error).
 
-All the names can be set in `consts.rs`, we'll write next to each what the variable is.
+The constants are set in `consts.rs`, we'll write next to each directory what the constant name is.
 
 ### Data directory (`DATA_DIR`)
-The data safecat use.
-- `/formats` (`CERTIFICATE_FORMATS`). Holds the formats of supported certificates. Each folder is a certificate type. Within the folder `format.toml` specifies the certificate format, and there is a subfolder for each possible proof. Each proof folder contains `proof.toml`, which describes the input parameters, and the source of the Noir program for the proof. The toml files are later used to ask for input interactively from the user when creating a certificate of proof.
+The data Safecat uses.
+- `/formats` (`CERTIFICATE_FORMATS`). Holds the formats of supported certificates. Each folder is actually a type of certificate. The file `format.toml` inside the folder specifies the certificate format, and there is a subfolder for each possible proof. Each proof folder contains `proof.toml`, which describes the input parameters, and the source code of the Noir program for the proof. The toml files are later used to ask for input interactively from the user when creating a certificate of proof.
 
-    We don't specify here in the detail the format of the `.toml` file at this stage, but they qre quite self-explanatory if you want to create new ones.
+    We don't specify here in detail the format of the `.toml` file at this stage, but they are quite self-explanatory if you want to create new ones.
 
 - 'noir_project_template' (`NOIR_TEMPLATE_FOLDER`). This folder contains a template for a Noir project. When the user proves something the program copies this template and changes it based on the specific proof format for the `format` folder (described above).
 
-- `societies`. This folder includes json files of `societies`. A society is a collection of public keys of entities that are trusted to create certifiates. When you create a proof, you often specify in which "society" the certificates are made. This lets know to whoeever verify the proofs that they come from trusted entities. A society file is Merkle tree created from the trusted entities. We use [MPZ](https://github.com/eyalron33/mpz/) tool to create such files.
+- `societies`. This folder includes JSON files of `societies`. A society is a collection of public keys of entities that are trusted to create certificates. When you create a proof, you often specify for which "society" the certificates are made. Then whoever verifies the proofs knows that the certificates that were made to use it come from trusted entities. A society file is a Merkle tree created from trusted entities. We use [MPZ](https://github.com/eyalron33/mpz/) tool to create such files.
 
-- 'test_data'. You can ignore the data for tests for now.
+- 'test_data'. You can ignore this folder for the time being. It got some data we generated for internal testing.
 
 ### Output directory (`OUTPUT_DIR`)
 This directory contains the output of Safecat. Currently: 
 - `priv.key` (`PRIVATE_KEY_FILENAME`): your last generated private key, unencrypted!
-- `/noir` folder: holds the latest Noir program created by the `proof` command.
+- List of proofs you generated, a proof name includes the timestamp of when it was generated, e.g., `proof_20241111_094857`.
+- Folder of Noir programs for proofs which were generated with the `safecat prove` using the `-n` flag. This flag tells Safecat to create a Noir program for the proof but without executing it.
 
 ## Limitations
 - Poseidon hash is limited to strings of 496 characters. This can be extended to arbitrary length but it's left as a task for later versions.
