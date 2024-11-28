@@ -220,10 +220,20 @@ pub fn woolball_name_to_fq(name: &str) -> Result<Fq, Error> {
         current_hash = sha256(&combined);
     }
 
-    // uint256 => Fq
-    let sha256_fq = message_to_fq_vec(&current_hash)?;
+    // Convert the string to a BigUint
+    let sha256_decimal_value: BigUint =
+        num_bigint::BigUint::from_str(&current_hash).expect("Invalid decimal number");
 
-    Ok(sha256_fq)
+    // Truncate by right shifting two bits in order to fit the sha256 into 254 bits
+    let sha256_decimal_value_truncated: BigUint = sha256_decimal_value >> 2;
+
+    // uint256 => Fq
+    let sha256_truncated_fq = Fq::from(sha256_decimal_value_truncated);
+
+    println!("sha256: {}", current_hash);
+    println!("sha256_fq: {}", fq_to_dec_str(&sha256_truncated_fq));
+
+    Ok(sha256_truncated_fq)
 }
 
 pub fn datetime_utc_to_fq(datetime: DateTime<Utc>) -> Result<Fq, Error> {
