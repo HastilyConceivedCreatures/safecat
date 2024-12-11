@@ -110,7 +110,7 @@ pub fn sign_message(message_to_sign_string: String) -> Result<(signature::Signat
 }
 
 // Hashes a message and then signs it. Returns the signature and the hash.
-fn sign_babyjubjub_fq(fq_as_str: String) -> Result<(signature::Signature, Fq), Error> {
+pub fn sign_babyjubjub_fq(fq_as_str: String) -> Result<(signature::Signature, Fq), Error> {
     let hash_fq = Fq::from_str(&*fq_as_str).unwrap();
 
     // Check if private key file exists

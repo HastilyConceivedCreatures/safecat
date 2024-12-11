@@ -58,6 +58,7 @@ fn main(
     last_checked_timestamp: pub Field,
     expiration: Field,
     signer: Person,
+    name_owner_address_signature: Signature,
     signature: Signature,
     hash_path: HashPath
 ) {
@@ -72,8 +73,24 @@ fn main(
         expiration: expiration
     };
 
-    // Verify signature
-    let verify_signature = dep::std::eddsa::eddsa_poseidon_verify(signer.x, signer.y, signature.s, signature.rx, signature.ry, certificate.hash());
+    // Verify certificate signature
+    let verify_signature = dep::std::eddsa::eddsa_poseidon_verify(
+        signer.x, 
+        signer.y, 
+        signature.s, 
+        signature.rx, 
+        signature.ry, 
+        certificate.hash()
+    );
+
+    // Verify that the person the certificate was made for signed the address
+    let verify_signature_address = dep::std::eddsa::eddsa_poseidon_verify(
+        babyjubjub_pubkey.x, 
+        babyjubjub_pubkey.y, 
+        name_owner_address_signature.s, 
+        name_owner_address_signature.rx, 
+        name_owner_address_signature.ry, 
+        name_owner_address);
 
     // Calculate the signer leaf value
     let leaf_signer : Field = std::hash::pedersen_hash([signer.x, signer.y]);
@@ -86,4 +103,6 @@ fn main(
 
     // Verify that the signatures is correct
     assert(verify_signature);
+
+    assert(verify_signature_address);
 }

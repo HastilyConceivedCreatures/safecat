@@ -230,9 +230,6 @@ pub fn woolball_name_to_fq(name: &str) -> Result<Fq, Error> {
     // uint256 => Fq
     let sha256_truncated_fq = Fq::from(sha256_decimal_value_truncated);
 
-    println!("sha256: {}", current_hash);
-    println!("sha256_fq: {}", fq_to_dec_str(&sha256_truncated_fq));
-
     Ok(sha256_truncated_fq)
 }
 

@@ -6,7 +6,7 @@ ftype = "Text"
 [[fields]]
 fname = "name_owner_address"
 fdescription = "wallet address (that owns the name): "
-ftype = "EVMAddress"
+ftype = "SignedEVMAddress"
 
 
 [[fields]]

@@ -32,6 +32,7 @@ pub enum FieldType {
         deserialize_with = "serialization::ark_de"
     )]
     SignedText(String), // Text that requires a digital signature
+    SignedEVMAddress(String),             // EVMAddress that requires a digital signature
     HashPath(proof_input::HashPath),
 }
 
@@ -49,6 +50,7 @@ pub enum FieldTypeName {
     Signature,
     Hash,
     SignedText,
+    SignedEVMAddress,
     HashPath,
 }
 
@@ -144,6 +146,7 @@ impl Document {
                     document_vec.push(*hash);
                 }
 
+                // TODO: Should the signature be part of the Fq vector?
                 FieldType::SignedText(ref text) => {
                     // Hash and sign text
                     let (signature, hash_fq) =
@@ -151,6 +154,24 @@ impl Document {
 
                     // push text's hash
                     document_vec.push(hash_fq);
+
+                    // push signature
+                    let mut signature_vec = signature.to_fq_vec();
+                    document_vec.append(&mut signature_vec);
+                }
+
+                // TODO: Should the signature be part of the Fq vector?
+                FieldType::SignedEVMAddress(ref address) => {
+                    // Convert address to Fq
+                    let address_fq = babyjubjub::evm_address_to_fq(address).unwrap();
+
+                    // Sign the address
+                    let address_fq_as_str = babyjubjub::fq_to_dec_str(&address_fq);
+                    let (signature, _) =
+                        commands::sign::sign_babyjubjub_fq(address_fq_as_str).unwrap();
+
+                    // push address
+                    document_vec.push(address_fq);
 
                     // push signature
                     let mut signature_vec = signature.to_fq_vec();
@@ -236,10 +257,10 @@ impl Document {
                     );
                 }
 
-                FieldType::EVMAddress(value) => {
+                FieldType::EVMAddress(address) => {
                     toml_table.insert(
                         document_field.format_field.fname.clone(),
-                        Value::String(value.clone()),
+                        Value::String(address.clone()),
                     );
                 }
 
@@ -270,6 +291,8 @@ impl Document {
                     );
                 }
 
+                // TODO: treat like "SignedEVMAddress": divide the toml into the hash of the text
+                // and the signature
                 FieldType::SignedText(text) => {
                     // Hash and sign text
                     let (signature, hash_fq) =
@@ -293,6 +316,40 @@ impl Document {
                         document_field.format_field.fname.clone(),
                         Value::Table(sub_table),
                     );
+                }
+
+                FieldType::SignedEVMAddress(address) => {
+                    // Insert address
+                    toml_table.insert(
+                        document_field.format_field.fname.clone(),
+                        Value::String(address.clone()),
+                    );
+
+                    // Sign the address and insert signature
+
+                    // First, convert the address into Fq
+                    let address_fq = babyjubjub::evm_address_to_fq(address).unwrap();
+
+                    // Then sin the Fq
+                    let address_fq_as_str = babyjubjub::fq_to_dec_str(&address_fq);
+                    let (signature, _) =
+                        commands::sign::sign_babyjubjub_fq(address_fq_as_str).unwrap();
+
+                    let signature_message = SignatureString {
+                        s: signature.s.to_string(),
+                        rx: signature.rx.to_string(),
+                        ry: signature.ry.to_string(),
+                    };
+
+                    // Create a sub-table for Hash and Signature
+                    let mut sub_table = Map::new();
+                    sub_table.insert("s".to_string(), Value::String(signature_message.s));
+                    sub_table.insert("rx".to_string(), Value::String(signature_message.rx));
+                    sub_table.insert("ry".to_string(), Value::String(signature_message.ry));
+
+                    let key_with_suffix =
+                        format!("{}_signature", document_field.format_field.fname);
+                    toml_table.insert(key_with_suffix, Value::Table(sub_table));
                 }
 
                 FieldType::HashPath(hash_path) => {
@@ -414,13 +471,23 @@ pub fn process_document_field(field: FormatField) -> DocumentField {
             }
         }
 
-        // Identical to Text in the input stage, but when needs to be signed
+        // Identical to Text in the input stage, but needs to be signed
         // when is used in a document
         FieldTypeName::SignedText => {
             let text: String = Text::new(&field.fdescription).prompt().unwrap();
             DocumentField {
                 format_field: field,
                 field: FieldType::SignedText(text),
+            }
+        }
+
+        // Identical to EVMAddress in the input stage, but needs to be signed
+        // when is used in a document
+        FieldTypeName::SignedEVMAddress => {
+            let address_hex_str = Text::new(&field.fdescription).prompt().unwrap();
+            DocumentField {
+                format_field: field,
+                field: FieldType::SignedEVMAddress(address_hex_str),
             }
         }
 
