@@ -37,8 +37,16 @@ fn run() -> Result<(), Error> {
         Commands::Generate => {
             commands::generate::generate(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME)?
         }
-        Commands::ShowKeys { format } => {
-            commands::show_keys::show_keys(consts::OUTPUT_DIR, consts::PRIVATE_KEY_FILENAME, format)?
+        Commands::Show { format, kind } => {
+            if kind == "keys" {
+                commands::show_keys::show_keys(
+                    consts::OUTPUT_DIR,
+                    consts::PRIVATE_KEY_FILENAME,
+                    format,
+                )?
+            } else {
+                commands::show_name::show_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME)?
+            }
         }
         Commands::Sign {
             format,
@@ -73,6 +81,9 @@ fn run() -> Result<(), Error> {
             no_execute,
         } => {
             commands::prove::prove(cert_format, proof_format, *no_execute)?;
+        }
+        Commands::SetName { name } => {
+            commands::name::set_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME, name)?
         }
     }
 

@@ -15,10 +15,14 @@ pub enum Commands {
     /// Generates a new private key.
     Generate,
 
-    /// Displays the keys in the specified format.
-    ShowKeys {
-        /// Format to display the keys ("detailed" or "hex"). Default is "detailed".
-        #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed")]
+    /// Displays information in the specified format.
+    Show {
+        /// The type of information to display ("keys" or "name").
+        #[arg(value_parser = ["keys", "name"])]
+        kind: String,
+
+        /// Format to display the keys (only valid for kind keys).
+        #[arg(long, value_parser = ["detailed", "hex"], default_value = "detailed", requires_if("keys", "kind"))]
         format: String,
     },
 
@@ -85,6 +89,12 @@ pub enum Commands {
         /// To execute or not?
         #[clap(long, short, action)]
         no_execute: bool,
+    },
+
+    /// Sets the Woolball name of the user
+    SetName {
+        /// Format to display the keys ("detailed" or "hex"). Default is "detailed".
+        name: String,
     },
 }
 
