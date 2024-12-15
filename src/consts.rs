@@ -11,6 +11,7 @@ pub const NOIR_TEMPLATE_FOLDER: &str = "noir_project_template";
 pub const SOCIENTY_FOLDER: &str = "societies";
 pub const DEAFULT_SOCIETY: &str = "woolball";
 pub const WBNAME_FILENAME: &str = "wbname";
+pub const WB_SERVER_URL: &str = "http://localhost:3000"; //WB server endpoint
 
 // ANSI escape code
 pub const GREEN_COLOR_ANSI: &str = "\x1b[32m";

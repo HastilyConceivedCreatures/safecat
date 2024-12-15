@@ -1,6 +1,9 @@
 use crate::{
-    commands,
-    crypto_structures::{babyjubjub, proof_input, signature, woolball::WoolballName},
+    commands, consts,
+    crypto_structures::{
+        babyjubjub, proof_input, signature,
+        woolball::{self, WoolballName},
+    },
     serialization,
 };
 pub use ark_bn254::Fr as Fq;
@@ -436,12 +439,49 @@ pub fn process_document_field(field: FormatField) -> DocumentField {
         }
 
         FieldTypeName::BabyjubjubPubkey => {
-            let pubkey_hex_str = Text::new(&field.fdescription).prompt().unwrap();
-            let babyjubjub_pubkey: babyjubjub::PubKey =
-                babyjubjub::PubKey::from_str_hex(pubkey_hex_str).unwrap();
-            DocumentField {
-                format_field: field,
-                field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+            // Prompt user for input
+            let pubkey_or_woolball_name = Text::new(&field.fdescription).prompt().unwrap();
+
+            // Check if the input ends with `#`
+            if pubkey_or_woolball_name.ends_with('#') {
+                // Print commentary about fetching the public key
+                println!(
+                    "{}Reading the public key from Woolball for target name: {}{}",
+                    consts::ORANGE_COLOR_ANSI,
+                    pubkey_or_woolball_name,
+                    consts::RESET_COLOR_ANSI
+                );
+
+                // Fetch the public key asynchronously
+                let runtime = tokio::runtime::Runtime::new().unwrap();
+                let babyjubjub_pubkey_result = runtime.block_on(
+                    woolball::fetch_publickey_for_wbname(pubkey_or_woolball_name.clone()),
+                );
+
+                // Handle the result
+                match babyjubjub_pubkey_result {
+                    Ok(babyjubjub_pubkey) => DocumentField {
+                        format_field: field,
+                        field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+                    },
+                    Err(err) => {
+                        eprintln!(
+                            "{}Failed to fetch public key: {}{}",
+                            consts::RED_COLOR_ANSI,
+                            err,
+                            consts::RESET_COLOR_ANSI
+                        );
+                        panic!("Error reading Woolball name.");
+                    }
+                }
+            } else {
+                // If no `#`, treat input as a hexadecimal public key
+                let babyjubjub_pubkey: babyjubjub::PubKey =
+                    babyjubjub::PubKey::from_str_hex(pubkey_or_woolball_name).unwrap();
+                DocumentField {
+                    format_field: field,
+                    field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
+                }
             }
         }
 

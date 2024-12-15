@@ -2,8 +2,8 @@ use crate::{consts, Error};
 use std::fs;
 use std::io::Read;
 
-// Displays private and public keys based on the specified output format.
-pub fn show_name(folder_path: &str, name_filename: &str) -> Result<(), Error> {
+/// Reads the name from the specified folder and filename.
+pub fn get_name(folder_path: &str, name_filename: &str) -> Result<String, Error> {
     // Construct full path to the name file
     let name_path_filename = format!("{}/{}", folder_path, name_filename);
 
@@ -13,6 +13,14 @@ pub fn show_name(folder_path: &str, name_filename: &str) -> Result<(), Error> {
     let mut name = String::new();
     file.read_to_string(&mut name)
         .map_err(|e| format!("Failed to read file '{}': {}", name_path_filename, e))?;
+
+    Ok(name)
+}
+
+/// Displays the name in the specified folder and filename with color formatting.
+pub fn show_name(folder_path: &str, name_filename: &str) -> Result<(), Error> {
+    // Retrieve the name using get_name
+    let name = get_name(folder_path, name_filename)?;
 
     // Print the name in a detailed format with color
     println!(

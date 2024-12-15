@@ -5,7 +5,7 @@ ftype = "WoolballName"
 
 [[to]]
 fname = "babyjubjub_pubkey"
-fdescription = "BabyjubjubPubkey (128 hex): "
+fdescription = "Babyjubjub public key (128 hex) or a Woolball name ending with '#':"
 ftype = "BabyjubjubPubkey"
 
 [[body]]

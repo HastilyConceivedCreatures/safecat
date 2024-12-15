@@ -11,6 +11,7 @@ use ark_bn254::Fr as Fq;
 use ark_std::str::FromStr;
 use babyjubjub_ark::Fr;
 use serde::{Deserialize, Serialize};
+use serde_json::json; // For constructing JSON objects
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Signature {
@@ -29,6 +30,24 @@ impl Signature {
         let s_str_dec = &self.s.to_string();
 
         vec![Fq::from_str(s_str_dec).unwrap(), self.rx, self.ry]
+    }
+
+    /// Converts the `Signature` instance to a JSON string.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        // Use fq_to_dec_str for Fq fields and .to_string() for Fr field
+        let s_str = self.s.to_string();
+        let rx_str = babyjubjub::fq_to_dec_str(&self.rx);
+        let ry_str = babyjubjub::fq_to_dec_str(&self.ry);
+
+        // Create JSON structure
+        let json_obj = json!({
+            "s": s_str,
+            "rx": rx_str,
+            "ry": ry_str,
+        });
+
+        // Convert JSON structure to a String
+        serde_json::to_string(&json_obj)
     }
 }
 
