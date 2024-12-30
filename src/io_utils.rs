@@ -34,7 +34,9 @@ pub fn split_hex_string(input: &str) -> (String, String) {
 // saves a certificate
 pub fn save_certificate(cert: Cert, signature: SignatureAndSigner) -> Result<String, Error> {
     // certificates directory
-    let path = "certs/created";
+    let path: &str = Box::leak(
+        format!("{}/{}", consts::CERT_FOLDER, consts::CREATED_CERT_FOLDER).into_boxed_str(),
+    );
 
     // Check if the directory exists
     let path_exists = fs::metadata(path).is_ok();
@@ -55,7 +57,12 @@ pub fn save_certificate(cert: Cert, signature: SignatureAndSigner) -> Result<Str
         filename_index += 1;
     }
 
-    let filename_with_path = format!("certs/created/{}", filename);
+    let filename_with_path = format!(
+        "{}/{}/{}",
+        consts::CERT_FOLDER,
+        consts::CREATED_CERT_FOLDER,
+        filename
+    );
 
     // Open the file in write mode, creating it if it doesn't exist
     let mut file = File::create(filename_with_path.clone())

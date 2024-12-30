@@ -13,6 +13,10 @@ pub const DEAFULT_SOCIETY: &str = "woolball";
 pub const WBNAME_FILENAME: &str = "wbname";
 pub const WB_SERVER_URL: &str = "http://localhost:3000"; //WB server endpoint
 
+pub const CERT_FOLDER: &str = "cert";
+pub const CREATED_CERT_FOLDER: &str = "created";
+pub const RECEIVED_CERT_FOLDER: &str = "received";
+
 // ANSI escape code
 pub const GREEN_COLOR_ANSI: &str = "\x1b[32m";
 pub const BRIGHT_GREEN_COLOR_ANSI: &str = "\x1b[92m";
