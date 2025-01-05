@@ -34,11 +34,13 @@ pub fn split_hex_string(input: &str) -> (String, String) {
 }
 
 // saves a certificate
-pub fn save_certificate(cert: Cert, signature: SignatureAndSigner) -> Result<String, Error> {
-    // certificates directory
-    let path: &str = Box::leak(
-        format!("{}/{}", consts::CERT_FOLDER, consts::CREATED_CERT_FOLDER).into_boxed_str(),
-    );
+pub fn save_certificate(
+    cert: Cert,
+    signature: SignatureAndSigner,
+    folder: &str,
+) -> Result<String, Error> {
+    // Certificates directory
+    let path: &str = Box::leak(format!("{}/{}", consts::CERT_FOLDER, folder).into_boxed_str());
 
     // Check if the directory exists
     let path_exists = fs::metadata(path).is_ok();

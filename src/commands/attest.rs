@@ -33,7 +33,8 @@ pub fn attest(format: String) -> Result<(), Error> {
     let signature_and_signer = SignatureAndSigner::sign_hash(cert_hash).unwrap();
 
     // save certificate to disk
-    let filename = io_utils::save_certificate(cert, signature_and_signer);
+    let filename =
+        io_utils::save_certificate(cert, signature_and_signer, consts::CREATED_CERT_FOLDER);
 
     println!("The certificate was saved to file: {}", filename?);
 
