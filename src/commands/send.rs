@@ -37,9 +37,10 @@ pub async fn send(target_name: String, index: i32) -> Result<(), Error> {
 
     // Send the request to the server
     let client = Client::new();
-    let server_url = consts::WB_SERVER_URL;
+    let server_url = format!("{}/save-certificate", consts::WB_SERVER_URL);
+
     let response = client
-        .post(server_url)
+        .post(&server_url)
         .json(&payload)
         .send()
         .await
