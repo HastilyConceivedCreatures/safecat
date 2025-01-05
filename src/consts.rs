@@ -13,7 +13,7 @@ pub const DEAFULT_SOCIETY: &str = "woolball";
 pub const WBNAME_FILENAME: &str = "wbname";
 pub const WB_SERVER_URL: &str = "http://localhost:3000"; //WB server endpoint
 
-pub const CERT_FOLDER: &str = "cert";
+pub const CERT_FOLDER: &str = "certs";
 pub const CREATED_CERT_FOLDER: &str = "created";
 pub const RECEIVED_CERT_FOLDER: &str = "received";
 

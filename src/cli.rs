@@ -96,6 +96,18 @@ pub enum Commands {
         /// Format to display the keys ("detailed" or "hex"). Default is "detailed".
         name: String,
     },
+
+    /// Sends a created certificate to the intended recipient for whom it was issued.
+    Send {
+        /// WOolball name to send the certificate to, e.g. neiman#
+        name: String,
+
+        /// Certificate index to send.
+        /// A non-positive number selects certificates relative to the most recent
+        /// (0 = last, -1 = one before the last, etc.).
+        #[arg(default_value_t = 0)]
+        certificate_index: i32,
+    },
 }
 
 /// Loads an ANSI cat and makes it say a random sentence from a file.

@@ -85,6 +85,13 @@ fn run() -> Result<(), Error> {
         Commands::SetName { name } => {
             commands::name::set_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME, name)?
         }
+        Commands::Send {
+            name,
+            certificate_index,
+        } => {
+            let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+            runtime.block_on(commands::send::send(name.clone(), *certificate_index))?;
+        }
     }
 
     Ok(())

@@ -3,10 +3,12 @@ saving, loading, and printing */
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use serde_json::Error as SerdeError;
 use std::error::Error as stdError;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::{fs, fs::File};
+use thiserror;
 
 use crate::crypto_structures::{certificate::Cert, signature::SignatureAndSigner};
 use crate::{consts, Error};
@@ -196,4 +198,76 @@ pub fn erase_temp_contents() -> Result<(), io::Error> {
     }
 
     Ok(())
+}
+
+// Function to retrieve a certificate and its signature/signer
+// The index determines which certificate to retrieve: 0 for the last, and -n for the nth before last.
+pub fn get_certificate(index: i32) -> Result<String, CertificateError> {
+    // Certificates directory path
+    let path: &str = &format!("{}/{}", consts::CERT_FOLDER, consts::CREATED_CERT_FOLDER);
+
+    // Collect all files in the certificate directory
+    let mut entries: Vec<_> = fs::read_dir(Path::new(path))
+        .map_err(CertificateError::IoError)?
+        .filter_map(|res| res.ok())
+        .filter(|entry| entry.path().is_file())
+        .collect();
+
+    // Sort files by creation time (most recent first)
+    entries.sort_by_key(|entry| entry.metadata().and_then(|m| m.created()).ok());
+    entries.reverse();
+
+    // Ensure the index is valid
+    let file_index = if index == 0 {
+        0 // Most recent file
+    } else {
+        let target_index = index.abs() as usize; // nth most recent file
+        if target_index >= entries.len() {
+            return Err(CertificateError::InvalidIndex);
+        }
+        target_index
+    };
+
+    let file_path = entries
+        .get(file_index)
+        .ok_or(CertificateError::InvalidIndex)?
+        .path();
+
+    // Read the certificate file content
+    let file_content = fs::read_to_string(file_path).map_err(CertificateError::IoError)?;
+
+    // Validate the content by attempting deserialization
+    validate_certificate_content(&file_content)?;
+
+    // Return the serialized content
+    Ok(file_content)
+}
+
+// Function to validate certificate content by attempting deserialization
+pub fn validate_certificate_content(file_content: &str) -> Result<(), CertificateError> {
+    let parts: Vec<&str> = file_content.splitn(2, '\n').collect();
+    if parts.len() != 2 {
+        return Err(CertificateError::InvalidFileFormat);
+    }
+
+    serde_json::from_str::<Cert>(parts[0]).map_err(CertificateError::JsonParseError)?;
+    serde_json::from_str::<SignatureAndSigner>(parts[1])
+        .map_err(CertificateError::JsonParseError)?;
+
+    Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CertificateError {
+    #[error("IO error occurred: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("Invalid certificate index: no file exists for the given index")]
+    InvalidIndex,
+
+    #[error("Invalid certificate file format: expected two parts separated by a newline")]
+    InvalidFileFormat,
+
+    #[error("Failed to parse JSON: {0}")]
+    JsonParseError(#[from] SerdeError),
 }
