@@ -5,7 +5,7 @@ use crate::{
 };
 use chrono::Utc;
 use reqwest::Client;
-use serde_json::json; // Adjust field type if using a different one
+use serde_json::json;
 
 pub async fn send(target_name: String, index: i32) -> Result<(), Error> {
     // Retrieve the certificate

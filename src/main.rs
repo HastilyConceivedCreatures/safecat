@@ -92,6 +92,10 @@ fn run() -> Result<(), Error> {
             let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
             runtime.block_on(commands::send::send(name.clone(), *certificate_index))?;
         }
+        Commands::Receive {} => {
+            let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+            runtime.block_on(commands::receive::receive())?;
+        }
     }
 
     Ok(())

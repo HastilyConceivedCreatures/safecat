@@ -61,12 +61,7 @@ pub fn save_certificate(
         filename_index += 1;
     }
 
-    let filename_with_path = format!(
-        "{}/{}/{}",
-        consts::CERT_FOLDER,
-        consts::CREATED_CERT_FOLDER,
-        filename
-    );
+    let filename_with_path = format!("{}/{}", path, filename);
 
     // Open the file in write mode, creating it if it doesn't exist
     let mut file = File::create(filename_with_path.clone())

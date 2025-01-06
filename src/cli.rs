@@ -108,6 +108,8 @@ pub enum Commands {
         #[arg(default_value_t = 0)]
         certificate_index: i32,
     },
+
+    Receive {},
 }
 
 /// Loads an ANSI cat and makes it say a random sentence from a file.
