@@ -188,7 +188,7 @@ fn prepare_noir_project(cert_format: &str, proof_format: &str) -> io::Result<()>
     // Create Path for the temporary directory
     let temp_folder = Path::new(consts::TEMP_DIR);
 
-    // Create a path for the noit template folder
+    // Create a path for the Noir template folder
     let noir_template_folder_string =
         consts::DATA_DIR.to_string() + "/" + consts::NOIR_TEMPLATE_FOLDER;
     let noir_template_folder = Path::new(&noir_template_folder_string);

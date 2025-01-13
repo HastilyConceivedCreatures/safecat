@@ -50,8 +50,9 @@ impl Cert {
         cert_vec
     }
 
-    /// TODO: Refactor this method. The certificate name should be derived from its fields and types.
-    ///       Consider moving this logic to the `Document` structure.
+    /// TODO: Refactor this method. Currentl it concantes all the names of all the fields
+    ///       in a string and then hash it. However, a certificate name should be derived also from the types of the fields.
+    ///       Consider add "name" method ot the `Document` structure, and use it here.
     pub fn name(&self) -> String {
         // Concatenate data from the `cert_type` and document fields.
         let mut data = String::new();

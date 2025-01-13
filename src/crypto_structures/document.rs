@@ -91,115 +91,106 @@ pub struct Document {
 
 impl Document {
     /// Converts the document fields into a vector of `Fq` elements.
-    // TODO: change to iter-flat_map-collect method
     pub fn to_fq_vector(&self) -> Vec<Fq> {
-        let mut document_vec: Vec<Fq> = vec![];
+        self.document_fields
+            .iter()
+            .flat_map(|document_field| {
+                let field = &document_field.field;
 
-        // Iterate through document fields and convert each field type to `Fq`
-        for document_field in &self.document_fields {
-            let field = &document_field.field;
-            match field {
-                FieldType::Text(ref text) => {
-                    let text_bn254 = babyjubjub::message_to_fq_vec(&text).unwrap();
+                match field {
+                    // Convert a text field into an Fq element using `message_to_fq_vec`.
+                    FieldType::Text(ref text) => {
+                        let text_bn254 = babyjubjub::message_to_fq_vec(text).unwrap();
+                        vec![text_bn254].into_iter()
+                    }
 
-                    document_vec.push(text_bn254);
-                }
+                    // Convert an integer into an Fq element.
+                    FieldType::Integer(ref number) => vec![Fq::from(*number)].into_iter(),
 
-                FieldType::Integer(ref number) => {
-                    let number_bn254 = Fq::from(*number);
+                    // Convert a timestamp into an Fq element.
+                    FieldType::Timestamp(ref timestamp) => {
+                        let timestamp_fq = babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
+                        vec![timestamp_fq].into_iter()
+                    }
 
-                    document_vec.push(number_bn254);
-                }
+                    // Convert an age (integer) into an Fq element.
+                    FieldType::Age(ref age) => vec![Fq::from(*age)].into_iter(),
 
-                FieldType::Timestamp(ref timestamp) => {
-                    let timestamp_fq = babyjubjub::datetime_utc_to_fq(*timestamp).unwrap();
+                    // Convert a Babyjubjub public key into multiple Fq elements.
+                    FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
+                        babyjubjub_pubkey.to_fq_vec().into_iter()
+                    }
 
-                    document_vec.push(timestamp_fq);
-                }
+                    // Convert a WoolballName into multiple Fq elements.
+                    FieldType::WoolballName(ref woolball_name) => {
+                        woolball_name.to_fq_vec().into_iter()
+                    }
 
-                FieldType::Age(ref age) => {
-                    let age_fq = Fq::from(*age);
+                    // Convert an EVM address into an Fq element.
+                    FieldType::EVMAddress(ref evm_address) => {
+                        let evm_address_bn254 = babyjubjub::evm_address_to_fq(evm_address).unwrap();
+                        vec![evm_address_bn254].into_iter()
+                    }
 
-                    document_vec.push(age_fq);
-                }
+                    // Convert a signature into multiple Fq elements.
+                    FieldType::Signature(ref signature) => signature.to_fq_vec().into_iter(),
 
-                FieldType::BabyjubjubPubkey(ref babyjubjub_pubkey) => {
-                    let mut babyjubjub_pubkey_vec = babyjubjub_pubkey.to_fq_vec();
+                    // Push a hash field as a single Fq element.
+                    FieldType::Hash(ref hash) => vec![*hash].into_iter(),
 
-                    document_vec.append(&mut babyjubjub_pubkey_vec);
-                }
+                    // Convert signed text into a hash and its signature.
+                    FieldType::SignedText(ref text) => {
+                        // Hash and sign text
+                        let (signature, hash_fq) =
+                            commands::sign::sign_message(text.clone()).unwrap();
 
-                FieldType::WoolballName(ref woolball_name) => {
-                    document_vec.append(&mut woolball_name.to_fq_vec());
-                }
+                        // Push text's hash
+                        let mut result = vec![hash_fq];
 
-                FieldType::EVMAddress(ref evm_address) => {
-                    let evm_address_bn254 = babyjubjub::evm_address_to_fq(&evm_address).unwrap();
+                        // Push signature
+                        result.extend(signature.to_fq_vec());
+                        result.into_iter()
+                    }
 
-                    document_vec.push(evm_address_bn254);
-                }
+                    // Convert a signed EVM address into its Fq representation and signature.
+                    FieldType::SignedEVMAddress(ref address) => {
+                        // Convert address to Fq
+                        let address_fq = babyjubjub::evm_address_to_fq(address).unwrap();
 
-                FieldType::Signature(ref signature) => {
-                    let mut signature_vec = signature.to_fq_vec();
+                        // Sign the address
+                        let address_fq_as_str = babyjubjub::fq_to_dec_str(&address_fq);
+                        let (signature, _) =
+                            commands::sign::sign_babyjubjub_fq(address_fq_as_str).unwrap();
 
-                    document_vec.append(&mut signature_vec);
-                }
+                        // Push address
+                        let mut result = vec![address_fq];
 
-                FieldType::Hash(ref hash) => {
-                    document_vec.push(*hash);
-                }
+                        // Push signature
+                        result.extend(signature.to_fq_vec());
+                        result.into_iter()
+                    }
 
-                // TODO: Should the signature be part of the Fq vector?
-                FieldType::SignedText(ref text) => {
-                    // Hash and sign text
-                    let (signature, hash_fq) =
-                        commands::sign::sign_message((*text).clone()).unwrap();
+                    // Convert a HashPath into Fq elements.
+                    FieldType::HashPath(ref hash_path) => {
+                        // Convert the index to Fq and push to the result.
+                        let mut result = vec![Fq::from(hash_path.index)];
 
-                    // push text's hash
-                    document_vec.push(hash_fq);
+                        // Convert each element in the path (Vec<String>) to Fq and push to the result.
+                        for path_element in &hash_path.path {
+                            let path_element_fq =
+                                babyjubjub::message_to_fq_vec(path_element).unwrap();
+                            result.push(path_element_fq);
+                        }
 
-                    // push signature
-                    let mut signature_vec = signature.to_fq_vec();
-                    document_vec.append(&mut signature_vec);
-                }
-
-                // TODO: Should the signature be part of the Fq vector?
-                FieldType::SignedEVMAddress(ref address) => {
-                    // Convert address to Fq
-                    let address_fq = babyjubjub::evm_address_to_fq(address).unwrap();
-
-                    // Sign the address
-                    let address_fq_as_str = babyjubjub::fq_to_dec_str(&address_fq);
-                    let (signature, _) =
-                        commands::sign::sign_babyjubjub_fq(address_fq_as_str).unwrap();
-
-                    // push address
-                    document_vec.push(address_fq);
-
-                    // push signature
-                    let mut signature_vec = signature.to_fq_vec();
-                    document_vec.append(&mut signature_vec);
-                }
-
-                FieldType::HashPath(ref hash_path) => {
-                    // Convert the index to Fq and push to the document_vec
-                    let index_fq = Fq::from(hash_path.index);
-                    document_vec.push(index_fq);
-
-                    // Convert each element in the path (Vec<String>) to Fq and push to the document_vec
-                    for path_element in &hash_path.path {
-                        let path_element_fq = babyjubjub::message_to_fq_vec(path_element).unwrap();
-                        document_vec.push(path_element_fq);
+                        result.into_iter()
                     }
                 }
-            }
-        }
-
-        document_vec
+            })
+            .collect()
     }
 
     /// Converts the document fields to a TOML table.
-    /// Values are represented as Fq elements since it's meant be used in Noir.
+    /// TODO: add to format an option to mark if a value should be converted to Fq in the Toml
     pub fn to_toml_table(&self) -> Map<String, Value> {
         // Create an empty TOML table
         let mut toml_table = Map::new();
@@ -207,7 +198,6 @@ impl Document {
         // Convert fields to TOML key-value pairs
         for document_field in &self.document_fields {
             match &document_field.field {
-                // TODO: Maybe we should hash text before adding it?
                 FieldType::Text(value) => {
                     toml_table.insert(
                         document_field.format_field.fname.clone(),
@@ -294,31 +284,33 @@ impl Document {
                     );
                 }
 
-                // TODO: treat like "SignedEVMAddress": divide the toml into the hash of the text
-                // and the signature
                 FieldType::SignedText(text) => {
                     // Hash and sign text
                     let (signature, hash_fq) =
                         commands::sign::sign_message((*text).clone()).unwrap();
 
-                    let signature_message = SignatureMessageString {
-                        hash: hash_fq.to_string(),
+                    let signature_message = SignatureString {
                         s: signature.s.to_string(),
                         rx: signature.rx.to_string(),
                         ry: signature.ry.to_string(),
                     };
 
-                    // Create a sub-table for Hash and Signature
+                    // Insert Hash
+                    toml_table.insert(
+                        document_field.format_field.fname.clone(),
+                        Value::String(hash_fq.to_string()),
+                    );
+
+                    // Create a sub-table for the Signature
                     let mut sub_table = Map::new();
-                    sub_table.insert("hash".to_string(), Value::String(signature_message.hash));
                     sub_table.insert("s".to_string(), Value::String(signature_message.s));
                     sub_table.insert("rx".to_string(), Value::String(signature_message.rx));
                     sub_table.insert("ry".to_string(), Value::String(signature_message.ry));
 
-                    toml_table.insert(
-                        document_field.format_field.fname.clone(),
-                        Value::Table(sub_table),
-                    );
+                    // Insert the signature
+                    let key_with_suffix =
+                        format!("{}_signature", document_field.format_field.fname);
+                    toml_table.insert(key_with_suffix, Value::Table(sub_table));
                 }
 
                 FieldType::SignedEVMAddress(address) => {
@@ -329,11 +321,10 @@ impl Document {
                     );
 
                     // Sign the address and insert signature
-
                     // First, convert the address into Fq
                     let address_fq = babyjubjub::evm_address_to_fq(address).unwrap();
 
-                    // Then sin the Fq
+                    // Then sign the Fq
                     let address_fq_as_str = babyjubjub::fq_to_dec_str(&address_fq);
                     let (signature, _) =
                         commands::sign::sign_babyjubjub_fq(address_fq_as_str).unwrap();
@@ -344,7 +335,7 @@ impl Document {
                         ry: signature.ry.to_string(),
                     };
 
-                    // Create a sub-table for Hash and Signature
+                    // Create a sub-table for the Signature
                     let mut sub_table = Map::new();
                     sub_table.insert("s".to_string(), Value::String(signature_message.s));
                     sub_table.insert("rx".to_string(), Value::String(signature_message.rx));
@@ -547,16 +538,6 @@ struct PubKeyString {
 // This way it's easier to work with it in TOML
 #[derive(Serialize, Deserialize, Debug)]
 struct SignatureString {
-    s: String,
-    rx: String,
-    ry: String,
-}
-
-// A string representation of a Signature
-// This way it's easier to work with it in TOML
-#[derive(Serialize, Deserialize, Debug)]
-struct SignatureMessageString {
-    hash: String,
     s: String,
     rx: String,
     ry: String,

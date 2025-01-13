@@ -11,7 +11,7 @@ pub async fn send(target_name: String, index: i32) -> Result<(), Error> {
     // Retrieve the certificate
     let certificate = io_utils::get_certificate(index)?;
 
-    // Query parameters
+    // requester_name in the query parameters is actually the Safecat user name
     let requester_name = show_name::get_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME)?;
 
     // Encode parameters to handle special characters like `#`

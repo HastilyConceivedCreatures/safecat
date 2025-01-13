@@ -13,7 +13,6 @@ pub fn public_key_from_str(key_string_hex: &str) -> Result<Point, Error> {
     }
 
     // Split the hex string into x and y parts
-    // TODO: Replace `split_at` with `split_at_checked`
     let (x_string_hex, y_string_hex) = key_string_hex.split_at(64);
 
     // Parse hex strings into BigUint
@@ -30,7 +29,6 @@ pub fn signature_from_str(signature_string_hex: &str) -> Result<Signature, Error
     }
 
     // Split the string at indices 64 and 128
-    // TODO: Replace `split_at` with `split_at_checked`
     let (x_string_hex, temp) = signature_string_hex.split_at(64);
     let (y_string_hex, s_string_hex) = temp.split_at(64);
 

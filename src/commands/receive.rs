@@ -12,7 +12,7 @@ use reqwest::Client;
 use serde_json::{self, Value}; // Adjust field type if using a different one
 
 pub async fn receive() -> Result<(), Error> {
-    // Query parameters
+    // target_name in the query parameters is actually the Safecat user name
     let target_name = show_name::get_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME)?;
 
     // Encode parameters to handle special characters like `#`
