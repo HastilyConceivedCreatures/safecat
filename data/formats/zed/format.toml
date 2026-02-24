@@ -1,0 +1,9 @@
+[[to]]
+fname = "zed_pubkey"
+fdescription = "ZED one-time code: "
+ftype = "Zed"
+
+[[body]]
+fname = "expiration"
+fdescription = "Expiration Date"
+ftype = "Timestamp"

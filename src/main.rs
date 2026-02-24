@@ -85,6 +85,9 @@ fn run() -> Result<(), Error> {
         Commands::SetName { name } => {
             commands::name::set_name(consts::OUTPUT_DIR, consts::WBNAME_FILENAME, name)?
         }
+        Commands::ShareZed {} => {
+            commands::zed::share_zed()?;
+        }
         Commands::Send {
             name,
             certificate_index,

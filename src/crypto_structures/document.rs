@@ -10,6 +10,7 @@ pub use ark_bn254::Fr as Fq;
 use chrono::NaiveDate;
 use chrono::{DateTime, Utc};
 use inquire::{formatter::DEFAULT_DATE_FORMATTER, CustomType, Text};
+use reqwest;
 use serde::{Deserialize, Serialize};
 use toml::map::Map;
 use toml::Value;
@@ -37,10 +38,11 @@ pub enum FieldType {
     SignedText(String), // Text that requires a digital signature
     SignedEVMAddress(String),             // EVMAddress that requires a digital signature
     HashPath(proof_input::HashPath),
+    Zed(babyjubjub::PubKey),
 }
 
 /// Enum for field type names, used to define the type of a field without holding values.
-/// Make sure that this enum stays synchronized with FieldType to avoid mismatches.
+/// Make sure that this enum stays synchroniZed with FieldType to avoid mismatches.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FieldTypeName {
     Text,
@@ -55,6 +57,7 @@ pub enum FieldTypeName {
     SignedText,
     SignedEVMAddress,
     HashPath,
+    Zed,
 }
 
 /// Defines a field format with a name, description, and its type.
@@ -183,6 +186,11 @@ impl Document {
                         }
 
                         result.into_iter()
+                    }
+
+                    // Zed IDs are a public key, and handled like babyjubjub pubkeys: turned into multiple Fq elements.
+                    FieldType::Zed(ref babyjubjub_pubkey) => {
+                        babyjubjub_pubkey.to_fq_vec().into_iter()
                     }
                 }
             })
@@ -366,6 +374,24 @@ impl Document {
                         Value::Table(sub_table),
                     );
                 }
+
+                FieldType::Zed(pubkey) => {
+                    // Serialize BabyjubjubPubkey as a nested TOML table
+                    let person_toml = PubKeyString {
+                        x: pubkey.x.to_string(),
+                        y: pubkey.y.to_string(),
+                    };
+
+                    // Create a sub-table for BabyjubjubPubkey
+                    let mut sub_table = Map::new();
+                    sub_table.insert("x".to_string(), Value::String(person_toml.x));
+                    sub_table.insert("y".to_string(), Value::String(person_toml.y));
+
+                    toml_table.insert(
+                        document_field.format_field.fname.clone(),
+                        Value::Table(sub_table),
+                    );
+                }
             }
         }
 
@@ -519,6 +545,67 @@ pub fn process_document_field(field: FormatField) -> DocumentField {
             DocumentField {
                 format_field: field,
                 field: FieldType::SignedEVMAddress(address_hex_str),
+            }
+        }
+
+        // Zed ID: exchange it via the server using a one-time code confirmation
+        FieldTypeName::Zed => {
+            const SERVER: &str = "http://zed-test.almonit.club";
+
+            let bob_name = Text::new("Your name: ")
+                .prompt()
+                .expect("Failed to read name");
+
+            let code_str = Text::new("One-time code (6 digits): ")
+                .prompt()
+                .expect("Failed to read code");
+
+            let code: u32 = code_str.parse().expect("Code must be 6 digits");
+
+            let client = reqwest::blocking::Client::new();
+
+            // Submit code + name
+            let res = client
+                .post(format!("{}/submit-code", SERVER))
+                .json(&serde_json::json!({
+                    "code": code.to_string(),
+                    "name": bob_name
+                }))
+                .send()
+                .expect("Failed to submit to server");
+
+            if !res.status().is_success() {
+                panic!("Server error: {}", res.status());
+            }
+
+            println!("Code submitted. Waiting for approval...");
+
+            // Poll until key is ready
+            let pubkey_hex: String = loop {
+                std::thread::sleep(std::time::Duration::from_secs(4));
+
+                let res = client
+                    .get(format!("{}/get-key", SERVER))
+                    .query(&[("code", code.to_string())])
+                    .send()
+                    .expect("Failed to poll server");
+
+                if res.status().is_success() {
+                    let json: serde_json::Value = res.json().expect("Invalid JSON");
+
+                    if let Some(key) = json["publicKey"].as_str() {
+                        break key.to_string();
+                    }
+                }
+                // loop continues on failure / no key yet
+            };
+
+            let babyjubjub_pubkey = babyjubjub::PubKey::from_str_hex(pubkey_hex)
+                .expect("Invalid public key format from server");
+
+            DocumentField {
+                format_field: field,
+                field: FieldType::BabyjubjubPubkey(babyjubjub_pubkey),
             }
         }
 

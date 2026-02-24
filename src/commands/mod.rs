@@ -7,3 +7,4 @@ pub mod send;
 pub mod show_keys;
 pub mod show_name;
 pub mod sign;
+pub mod zed;

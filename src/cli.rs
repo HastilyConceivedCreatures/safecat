@@ -97,6 +97,9 @@ pub enum Commands {
         name: String,
     },
 
+    /// Initiates one-time code confirmation to share your Zed public key (Alice only).
+    ShareZed {},
+
     /// Sends a created certificate to the intended recipient for whom it was issued.
     Send {
         /// WOolball name to send the certificate to, e.g. neiman#
@@ -109,6 +112,7 @@ pub enum Commands {
         certificate_index: i32,
     },
 
+    /// Receives all certificates that were sent to the user since it last fetched
     Receive {},
 }
 
