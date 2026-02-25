@@ -1,8 +1,0 @@
-[package]
-name = "verify_certificates"
-type = "bin"
-authors = [""]
-compiler_version = ">=0.25.0"
-
-[dependencies]
-poseidon = { tag = "v0.2.6", git = "https://github.com/noir-lang/poseidon" }
