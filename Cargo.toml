@@ -11,7 +11,7 @@ path = "src/main.rs"
 ark-bn254 = "0.4.0"
 ark-ff = "=0.4.0"
 ark-std = "0.4.0"
-babyjubjub-ark = { git = "https://github.com/arnaucube/babyjubjub-ark" }
+babyjubjub-ark = { git = "https://github.com/eyalron33/babyjubjub" }
 poseidon-ark = { git = "https://github.com/arnaucube/poseidon-ark" }
 clap = { version = "4.5.1", features = ["derive", "string"] }
 ff_ce = { version = "0.11", features = ["derive"] }

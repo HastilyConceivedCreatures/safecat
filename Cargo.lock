@@ -252,7 +252,7 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "babyjubjub-ark"
 version = "0.0.1"
-source = "git+https://github.com/arnaucube/babyjubjub-ark#dbf79c582c7e892882dc0afe3cb866c9ff2fdacb"
+source = "git+https://github.com/eyalron33/babyjubjub#dbf79c582c7e892882dc0afe3cb866c9ff2fdacb"
 dependencies = [
  "ark-bn254",
  "ark-ff",
