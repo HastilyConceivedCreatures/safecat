@@ -8,12 +8,15 @@ pub fn show_keys(
 ) -> Result<(), Error> {
     // Construct full path to the private key file
     let privkey_path_filename = folder_path.to_string() + "/" + privkey_filename;
+    println!("privkey_path_filename: {privkey_path_filename}");
 
     // Load private key from the specified file
     let private_key = babyjubjub::PrivKey::read_from_file(privkey_path_filename.as_str())?;
+    println!("private_key: {:?}", private_key.key);
 
     // Generate the corresponding public key
     let public_key = private_key.public();
+    println!("public_key: {:?}", public_key);
 
     // Check the output format and display keys accordingly
     if output_format == "detailed" {
