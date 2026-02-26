@@ -252,13 +252,15 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 [[package]]
 name = "babyjubjub-ark"
 version = "0.0.1"
-source = "git+https://github.com/arnaucube/babyjubjub-ark#dbf79c582c7e892882dc0afe3cb866c9ff2fdacb"
+source = "git+https://github.com/eyalron33/babyjubjub#0bddce1195777610873684e0c597aa02b73dd09a"
 dependencies = [
  "ark-bn254",
  "ark-ff",
  "ark-std",
  "arrayref",
+ "blake",
  "blake-hash",
+ "blake2",
  "generic-array",
  "lazy_static",
  "poseidon-ark",
@@ -283,6 +285,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "blake"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee55e9ca33be1f257d8356cfb29b10b1c8f86dc38cf1344ca01525464356cd0c"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "blake-hash"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -291,6 +303,15 @@ dependencies = [
  "block-buffer 0.9.0",
  "digest 0.9.0",
  "ppv-lite86",
+]
+
+[[package]]
+name = "blake2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+dependencies = [
+ "digest 0.10.7",
 ]
 
 [[package]]
